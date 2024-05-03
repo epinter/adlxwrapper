@@ -1,0 +1,15 @@
+<Project>
+    <PropertyGroup>
+        <UseArtifactsOutput>true</UseArtifactsOutput>
+        <Version>0.2.0-alpha</Version>
+        <Copyright>Emerson Pinter</Copyright>
+        <Authors>Emerson Pinter</Authors>
+        <TargetFrameworks>net481;netstandard2.0;net7.0;net8.0</TargetFrameworks>
+        <SelfContained>false</SelfContained>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/epinter/amd-adlxwrapper</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/epinter/amd-adlxwrapper</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+</Project>
