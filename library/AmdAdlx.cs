@@ -70,7 +70,8 @@ public static class AmdAdlx
         }
     }
 
-    public static ADLXResult Terminate() {
+    public static ADLXResult Terminate()
+    {
         adlxSystemStructPtr = IntPtr.Zero;
         adlMappingStructPtr = IntPtr.Zero;
         systemInstance = null;
@@ -98,9 +99,7 @@ public static class AmdAdlx
         {
             throw new InvalidOperationException("ADLX initialzation failed");
         }
-
         systemInstance ??= new ADLXSystem(adlxSystemStructPtr);
-
         return systemInstance;
     }
 
@@ -110,9 +109,7 @@ public static class AmdAdlx
         {
             throw new InvalidOperationException("ADLX initialzation failed");
         }
-
         mappingInstance ??= new ADLMapping(adlMappingStructPtr);
-
         return mappingInstance;
     }
 
@@ -144,10 +141,12 @@ public static class AmdAdlx
     {
         GPU GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex);
     }
+
     private class ADLMapping : IADLMapping
     {
         private readonly IntPtr _ptr;
         private readonly ADLMappingVtbl vtbl;
+
         internal ADLMapping(IntPtr ptr)
         {
             _ptr = ptr;
@@ -158,6 +157,7 @@ public static class AmdAdlx
         {
             ADLXResult status = vtbl.GetADLXGPUFromAdlAdapterIndex(_ptr, adlAdapterIndex, out IntPtr adlxGpuPtr);
             GPU gpu = null;
+
             if (status == ADLXResult.ADLX_OK)
             {
                 using (IADLXGPU adlxGpu = new ADLXGPU(adlxGpuPtr))
@@ -184,6 +184,7 @@ public static class AmdAdlx
             }
             else
                 LogDebug("failed: status = {0}", status);
+
             return gpu;
         }
 
@@ -247,6 +248,7 @@ public static class AmdAdlx
         public List<GPU> GetGPUList()
         {
             List<GPU> gpuList = [];
+
             using (IADLXGPUList adlxGPUList = GetGPUs())
             {
                 for (int i = 0; i < adlxGPUList.Size(); i++)
@@ -297,6 +299,7 @@ public static class AmdAdlx
                     }
                 }
             }
+
             return gpuList;
         }
 
@@ -395,6 +398,7 @@ public static class AmdAdlx
         public ADLXResult At(uint location, out IADLXInterface ppItem)
         {
             ADLXResult status = vtbl.At(_ptr, location, out IntPtr ptr);
+
             if (status == ADLXResult.ADLX_OK && ptr != IntPtr.Zero)
             {
                 ppItem = new ADLXInterface(ptr);
@@ -416,6 +420,7 @@ public static class AmdAdlx
             {
                 return vtbl.Add_Back(_ptr, ptrItem);
             }
+
             return ADLXResult.ADLX_INVALID_ARGS;
         }
 
@@ -735,6 +740,7 @@ public static class AmdAdlx
         public ADLXResult At_GPUList(uint location, out IADLXGPU ppItem)
         {
             ADLXResult status = vtbl.At_GPUList(_ptr, location, out IntPtr ptr);
+
             if (status == ADLXResult.ADLX_OK && ptr != IntPtr.Zero)
             {
                 ppItem = new ADLXGPU(ptr);
@@ -756,6 +762,7 @@ public static class AmdAdlx
             {
                 return vtbl.Add_Back_GPUList(_ptr, ptrGpu);
             }
+
             return ADLXResult.ADLX_INVALID_ARGS;
         }
 
@@ -831,6 +838,7 @@ public static class AmdAdlx
                 if (adlxFps != null)
                     fps = adlxFps.FPS();
             }
+
             return fps;
         }
 
@@ -872,6 +880,7 @@ public static class AmdAdlx
                     }
                 }
             }
+
             return gpuMetrics;
         }
 
@@ -952,6 +961,7 @@ public static class AmdAdlx
                     }
                 }
             }
+
             return supported;
         }
 
@@ -1008,6 +1018,7 @@ public static class AmdAdlx
         protected struct ADLXPerformanceMonitoringServicesVtbl
         {
             public ADLXInterfaceVtbl adlxInterface;
+
             public ADLXPerformanceMonitoringServicesDelegates.GetSamplingIntervalRange GetSamplingIntervalRange;
             public ADLXPerformanceMonitoringServicesDelegates.SetSamplingInterval SetSamplingInterval;
             public ADLXPerformanceMonitoringServicesDelegates.GetSamplingInterval GetSamplingInterval;
@@ -1166,51 +1177,61 @@ public static class AmdAdlx
             vtbl.GetGPUUsageRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUClockSpeedRange()
         {
             vtbl.GetGPUClockSpeedRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUVRAMClockSpeedRange()
         {
             vtbl.GetGPUVRAMClockSpeedRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUTemperatureRange()
         {
             vtbl.GetGPUTemperatureRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUHotspotTemperatureRange()
         {
             vtbl.GetGPUHotspotTemperatureRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUPowerRange()
         {
             vtbl.GetGPUPowerRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUFanSpeedRange()
         {
             vtbl.GetGPUFanSpeedRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUVRAMRange()
         {
             vtbl.GetGPUVRAMRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUVoltageRange()
         {
             vtbl.GetGPUVoltageRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUTotalBoardPowerRange()
         {
             vtbl.GetGPUTotalBoardPowerRange(_ptr, out int minValue, out int maxValue);
             return new MetricRange() { min = minValue, max = maxValue };
         }
+
         public MetricRange GetGPUIntakeTemperatureRange()
         {
             vtbl.GetGPUIntakeTemperatureRange(_ptr, out int minValue, out int maxValue);
@@ -1235,6 +1256,7 @@ public static class AmdAdlx
         protected struct ADLXGPUMetricsSupportVtbl
         {
             public ADLXInterfaceVtbl adlxInterface;
+
             public ADLXGPUMetricsSupportDelegates.IsSupportedGPUUsage IsSupportedGPUUsage;
             public ADLXGPUMetricsSupportDelegates.IsSupportedGPUClockSpeed IsSupportedGPUClockSpeed;
             public ADLXGPUMetricsSupportDelegates.IsSupportedGPUVRAMClockSpeed IsSupportedGPUVRAMClockSpeed;
@@ -1725,6 +1747,7 @@ public static class AmdAdlx
         public BIOSInfo BIOSInfo { get; set; }
         public bool IsExternal { get; set; }
         public bool HasDesktops { get; set; }
+
         public override string ToString()
         {
             return "Name='" + Name + "'; " +
@@ -1860,7 +1883,6 @@ public static class AmdAdlx
     public class GPUMetrics : IEnumerable<Metric>
     {
         private readonly HashSet<Metric> metrics = [];
-
         public long TimeStamp { get; set; }
 
         public Metric Get(string name)
