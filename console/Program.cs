@@ -13,6 +13,7 @@ public class Program
     {
         bool loop = args.Contains("loop");
         bool debug = args.Contains("debug");
+        bool noAdl = args.Contains("noadl");
 
         if (debug && !loop)
             _logger = CreateLogger();
@@ -20,7 +21,7 @@ public class Program
         IntPtr adlContext = IntPtr.Zero;
         try
         {
-            if (InitializeAdl(out adlContext))
+            if (!noAdl && InitializeAdl(out adlContext))
             {
                 PrintAdlInfo(adlContext);
 
@@ -40,13 +41,15 @@ public class Program
                 // a loop to test memory management, run and monitor ram usage
                 int i = 0;
                 DateTime last = DateTime.Now;
+                TimeSpan accFpsTime = TimeSpan.Zero;
                 while (true)
                 {
                     i++;
                     if (i % 10000 == 0)
                     {
-                        Console.WriteLine("i = {0}, TimeSpan = {1:s\\.fffffff}s;", i, DateTime.Now - last);
+                        Console.WriteLine("i = {0}, TimeSpan = {1:s\\.fffffff}s; GetCurrentFPS-Duration = {2:s\\.fffffff}s;", i, DateTime.Now - last, accFpsTime);
                         last = DateTime.Now;
+                        accFpsTime = TimeSpan.Zero;
                     }
 
                     uint r = system.GetTotalSystemRAM();
@@ -63,9 +66,11 @@ public class Program
                             AmdAdlx.GPUMetrics gpuMetrics = perf.GetCurrentGPUMetricsForUniqueId(gpu.UniqueId);
 
                             AmdAdlx.ADLX_IntRange range = perf.GetSamplingIntervalRange();
-
-                            perf.CurrentFPS();
                         }
+
+                        DateTime beforeFps = DateTime.Now;
+                        perf.CurrentFPS();
+                        accFpsTime += DateTime.Now - beforeFps;
                     }
                 }
             }
@@ -107,7 +112,7 @@ public class Program
 
                     Console.WriteLine("SamplingInterval: {0}", perf.GetSamplingInterval());
 
-                    int j = 10;
+                    int j = 3;
                     while (j > 0)
                     {
                         j--;
