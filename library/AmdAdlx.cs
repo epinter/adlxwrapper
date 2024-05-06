@@ -40,6 +40,10 @@ public static class AmdAdlx
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern ADLXResult ADLXQueryFullVersion(ref ulong fullVersion);
 
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern ADLXResult ADLXTerminate();
+
     public static void Initialize(ILogger logger = null)
     {
         _logger = logger;
@@ -64,6 +68,18 @@ public static class AmdAdlx
         {
             LogDebug("ADLX initialization status = {0}", status);
         }
+    }
+
+    public static ADLXResult Terminate() {
+        adlxSystemStructPtr = IntPtr.Zero;
+        adlMappingStructPtr = IntPtr.Zero;
+        systemInstance = null;
+        mappingInstance = null;
+        adlxFullVersion = 0;
+        adlxInitialized = false;
+        mappingAdl = false;
+        _logger = null;
+        return ADLXTerminate();
     }
 
     public static bool IsAdlxInitialized()

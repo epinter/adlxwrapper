@@ -128,6 +128,8 @@ public class Program
             if (adlContext != IntPtr.Zero)
                 AtiAdlxx.ADL2_Main_Control_Destroy(adlContext);
         }
+
+        AmdAdlx.Terminate();
     }
 
     private static bool InitializeAdl(out IntPtr adlContext)
