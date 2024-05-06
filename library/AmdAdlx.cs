@@ -139,6 +139,7 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLMapping
     {
+        ADLXResult GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex, out IADLXGPU adlxGpu);
         GPU GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex);
     }
 
@@ -153,14 +154,21 @@ public static class AmdAdlx
             GetVtblPointer(ptr, out vtbl);
         }
 
-        public GPU GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex)
+        public ADLXResult GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex, out IADLXGPU adlxGpu)
         {
             ADLXResult status = vtbl.GetADLXGPUFromAdlAdapterIndex(_ptr, adlAdapterIndex, out IntPtr adlxGpuPtr);
+            adlxGpu = new ADLXGPU(adlxGpuPtr);
+            return status;
+        }
+
+        public GPU GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex)
+        {
+            ADLXResult status = GetADLXGPUFromAdlAdapterIndex(adlAdapterIndex, out IADLXGPU adlxGpu);
             GPU gpu = null;
 
             if (status == ADLXResult.ADLX_OK)
             {
-                using (IADLXGPU adlxGpu = new ADLXGPU(adlxGpuPtr))
+                using (adlxGpu)
                 {
                     gpu = new()
                     {
@@ -183,7 +191,7 @@ public static class AmdAdlx
                 }
             }
             else
-                LogDebug("failed: status = {0}", status);
+                LogDebug("GetADLXGPUFromAdlAdapterIndex failed: status = {0}", status);
 
             return gpu;
         }
@@ -222,10 +230,11 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXSystem
     {
-        uint GetTotalSystemRAM();
-        List<GPU> GetGPUList();
+        ADLXResult TotalSystemRAM(out uint ramMB);
         IADLXGPUList GetGPUs();
         IADLXPerformanceMonitoringServices GetPerformanceMonitoringServices();
+        uint GetTotalSystemRAM();
+        List<GPU> GetGPUList();
     }
 
     private class ADLXSystem : IADLXSystem
@@ -258,8 +267,8 @@ public static class AmdAdlx
                     {
                         using (adlxGpu)
                         {
-                            LogDebug(String.Format("GPU: Name='{0}'; VendorId='{1}'; IsExternal='{2}'; DriverPath='{3}'; PNPString='{4}'; HasDesktops='{5}'; VRAMType='{6}'; Type='{7}'" +
-                                            "DeviceId='{8}'; RevisionId='{9}'; SubSystemId='{10}'; SubSystemVendorId='{11}'; UniqueId='{12}'; BIOSInfo='{13}'; ASICFamilyType='{14}'",
+                            LogDebug(String.Format("GPU: Name='{0}'; VendorId='{1}'; IsExternal='{2}'; DriverPath='{3}'; PNPString='{4}'; HasDesktops='{5}'; VRAMType='{6}'; Type='{7}'; " +
+                                            "DeviceId='{8}'; RevisionId='{9}'; SubSystemId='{10}'; SubSystemVendorId='{11}'; UniqueId='{12}'; BIOSInfo='{13}'; ASICFamilyType='{14}';",
                                 adlxGpu.Name(),
                                 adlxGpu.VendorId(),
                                 adlxGpu.IsExternal(),
@@ -305,8 +314,13 @@ public static class AmdAdlx
 
         public uint GetTotalSystemRAM()
         {
-            vtbl.TotalSystemRAM(_ptr, out uint ramMB);
+            TotalSystemRAM(out uint ramMB);
             return ramMB;
+        }
+
+        public ADLXResult TotalSystemRAM(out uint ramMB)
+        {
+            return vtbl.TotalSystemRAM(_ptr, out ramMB);
         }
 
         public IADLXPerformanceMonitoringServices GetPerformanceMonitoringServices()
@@ -484,6 +498,22 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXGPU : IADLXInterface
     {
+        ADLXResult Name(out string name);
+        ADLXResult TotalVRAM(out uint vramMB);
+        ADLXResult VendorId(out string vendorId);
+        ADLXResult IsExternal(out bool external);
+        ADLXResult DriverPath(out string driverPath);
+        ADLXResult PNPString(out string pnpString);
+        ADLXResult HasDesktops(out bool hasDesktops);
+        ADLXResult VRAMType(out string vramType);
+        ADLXResult DeviceId(out string deviceId);
+        ADLXResult RevisionId(out string revisionId);
+        ADLXResult SubSystemId(out string subSystemId);
+        ADLXResult SubSystemVendorId(out string subSystemVendorId);
+        ADLXResult UniqueId(out int uniqueId);
+        ADLXResult ASICFamilyType(out ASICFamilyType asicFamilyType);
+        ADLXResult Type(out GPUType type);
+        ADLXResult BIOSInfo(out string partNumber, out string version, out string date);
         string Name();
         uint TotalVRAM();
         string VendorId();
@@ -513,107 +543,213 @@ public static class AmdAdlx
             GetVtblPointer(ptr, out vtbl);
         }
 
+        public ADLXResult Name(out string name)
+        {
+            ADLXResult status = vtbl.Name(_ptr, out IntPtr namePtr);
+            name = Marshal.PtrToStringAnsi(namePtr);
+            return status;
+        }
+
         public string Name()
         {
-            vtbl.Name(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            Name(out string name);
+            return name;
+        }
+
+        public ADLXResult TotalVRAM(out uint vramMB)
+        {
+            ADLXResult status = vtbl.TotalVRAM(_ptr, out vramMB);
+            return status;
         }
 
         public uint TotalVRAM()
         {
-            vtbl.TotalVRAM(_ptr, out uint vram);
-            return vram;
+            TotalVRAM(out uint vramMB);
+            return vramMB;
+        }
+
+        public ADLXResult VendorId(out string vendorId)
+        {
+            ADLXResult status = vtbl.VendorId(_ptr, out IntPtr namePtr);
+            vendorId = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string VendorId()
         {
-            vtbl.VendorId(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            VendorId(out string vendorId);
+            return vendorId;
+        }
+
+        public ADLXResult IsExternal(out bool external)
+        {
+            return vtbl.IsExternal(_ptr, out external);
         }
 
         public bool IsExternal()
         {
-            vtbl.IsExternal(_ptr, out bool isExternal);
-            return isExternal;
+            IsExternal(out bool external);
+            return external;
+        }
+
+        public ADLXResult DriverPath(out string driverPath)
+        {
+            ADLXResult status = vtbl.DriverPath(_ptr, out IntPtr namePtr);
+            driverPath = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string DriverPath()
         {
-            vtbl.DriverPath(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            DriverPath(out string driverPath);
+            return driverPath;
+        }
+
+        public ADLXResult PNPString(out string pnpString)
+        {
+            ADLXResult status = vtbl.PNPString(_ptr, out IntPtr namePtr);
+            pnpString = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string PNPString()
         {
-            vtbl.PNPString(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            PNPString(out string pnpString);
+            return pnpString;
+        }
+
+        public ADLXResult HasDesktops(out bool hasDesktops)
+        {
+            return vtbl.HasDesktops(_ptr, out hasDesktops);
         }
 
         public bool HasDesktops()
         {
-            vtbl.HasDesktops(_ptr, out bool hasDesktops);
+            HasDesktops(out bool hasDesktops);
             return hasDesktops;
+        }
+
+        public ADLXResult VRAMType(out string vramType)
+        {
+            ADLXResult status = vtbl.VRAMType(_ptr, out IntPtr namePtr);
+            vramType = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string VRAMType()
         {
-            vtbl.VRAMType(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            VRAMType(out string vramType);
+            return vramType;
+        }
+
+        public ADLXResult DeviceId(out string deviceId)
+        {
+            ADLXResult status = vtbl.DeviceId(_ptr, out IntPtr namePtr);
+            deviceId = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string DeviceId()
         {
-            vtbl.DeviceId(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            DeviceId(out string deviceId);
+            return deviceId;
+        }
+
+        public ADLXResult RevisionId(out string revisionId)
+        {
+            ADLXResult status = vtbl.RevisionId(_ptr, out IntPtr namePtr);
+            revisionId = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string RevisionId()
         {
-            vtbl.RevisionId(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            RevisionId(out string revisionId);
+            return revisionId;
+        }
+
+        public ADLXResult SubSystemId(out string subSystemId)
+        {
+            ADLXResult status = vtbl.SubSystemId(_ptr, out IntPtr namePtr);
+            subSystemId = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string SubSystemId()
         {
-            vtbl.SubSystemId(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            SubSystemId(out string subSystemId);
+            return subSystemId;
+        }
+
+        public ADLXResult SubSystemVendorId(out string subSystemVendorId)
+        {
+            ADLXResult status = vtbl.SubSystemVendorId(_ptr, out IntPtr namePtr);
+            subSystemVendorId = Marshal.PtrToStringAnsi(namePtr);
+            return status;
         }
 
         public string SubSystemVendorId()
         {
-            vtbl.SubSystemVendorId(_ptr, out IntPtr namePtr);
-            return Marshal.PtrToStringAnsi(namePtr);
+            SubSystemVendorId(out string subSystemVendorId);
+            return subSystemVendorId;
+        }
+
+        public ADLXResult UniqueId(out int uniqueId)
+        {
+            ADLXResult status = vtbl.UniqueId(_ptr, out uniqueId);
+            return status;
         }
 
         public int UniqueId()
         {
-            vtbl.UniqueId(_ptr, out int uniqueId);
+            UniqueId(out int uniqueId);
             return uniqueId;
+        }
+
+        public ADLXResult Type(out GPUType type)
+        {
+            ADLXResult status = vtbl.Type(_ptr, out int iType);
+            type = (GPUType)iType;
+            return status;
         }
 
         public GPUType Type()
         {
-            vtbl.Type(_ptr, out int type);
-            return (GPUType)type;
+            Type(out GPUType type);
+            return type;
+        }
+
+        public ADLXResult ASICFamilyType(out ASICFamilyType asicFamilyType)
+        {
+            ADLXResult status = vtbl.ASICFamilyType(_ptr, out int iAsicType);
+            asicFamilyType = (ASICFamilyType)iAsicType;
+            return status;
         }
 
         public ASICFamilyType ASICFamilyType()
         {
-            vtbl.ASICFamilyType(_ptr, out int asicFamilyType);
-            return (ASICFamilyType)asicFamilyType;
+            ASICFamilyType(out ASICFamilyType type);
+            return type;
+        }
+
+        public ADLXResult BIOSInfo(out string partNumber, out string version, out string date)
+        {
+            IntPtr ptrPartNumber = IntPtr.Zero;
+            IntPtr ptrVersion = IntPtr.Zero;
+            IntPtr ptrDate = IntPtr.Zero;
+
+            ADLXResult status = vtbl.BIOSInfo(_ptr, out ptrPartNumber, out ptrVersion, out ptrDate);
+            partNumber = Marshal.PtrToStringAnsi(ptrPartNumber);
+            version = Marshal.PtrToStringAnsi(ptrVersion);
+            date = Marshal.PtrToStringAnsi(ptrDate);
+
+            return status;
         }
 
         public BIOSInfo BIOSInfo()
         {
             BIOSInfo biosInfo = new();
-            IntPtr partNumber = IntPtr.Zero;
-            IntPtr version = IntPtr.Zero;
-            IntPtr date = IntPtr.Zero;
-
-            vtbl.BIOSInfo(_ptr, out partNumber, out version, out date);
-            biosInfo.partNumber = Marshal.PtrToStringAnsi(partNumber);
-            biosInfo.version = Marshal.PtrToStringAnsi(version);
-            biosInfo.date = Marshal.PtrToStringAnsi(date);
+            BIOSInfo(out biosInfo.partNumber, out biosInfo.version, out biosInfo.date);
             return biosInfo;
         }
 
@@ -622,22 +758,17 @@ public static class AmdAdlx
             return _ptr;
         }
 
-        public override void Acquire()
-        {
-            vtbl.adlxInterface.Acquire(_ptr);
-            LogDebug("=ADLXGPU acquired");
-        }
-
-        public override void Release()
+        public override long Release()
         {
             LogDebug("+ADLXGPU release started");
-
+            long release = 0;
             if (_ptr != IntPtr.Zero)
             {
-                vtbl.adlxInterface.Release(_ptr);
+                release = vtbl.adlxInterface.Release(_ptr);
             }
-
             LogDebug("+ADLXGPU released");
+
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
@@ -766,22 +897,17 @@ public static class AmdAdlx
             return ADLXResult.ADLX_INVALID_ARGS;
         }
 
-        public override void Acquire()
-        {
-            if (_ptr != IntPtr.Zero)
-                vtbl.adlxList.adlxInterface.Acquire(_ptr);
-
-            LogDebug("=ADLXGPUList acquired");
-        }
-
-        public override void Release()
+        public override long Release()
         {
             LogDebug("+ADLXGPUList release started");
-
+            long release = 0;
             if (_ptr != IntPtr.Zero)
-                vtbl.adlxList.adlxInterface.Release(_ptr);
-
+            {
+                release = vtbl.adlxList.adlxInterface.Release(_ptr);
+            }
             LogDebug("+ADLXGPUList released");
+
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
@@ -809,10 +935,16 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXPerformanceMonitoringServices : IADLXInterface
     {
-        IADLXGPUMetricsSupport GetSupportedGPUMetrics(IntPtr gpu);
-        IADLXFPS GetCurrentFPS();
-        int GetSamplingInterval();
+        ADLXResult GetSamplingInterval(out int intervalMs);
         ADLXResult SetSamplingInterval(int intervalMs);
+        ADLXResult GetSupportedGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetricsSupport ppMetricsSupported);
+        ADLXResult GetCurrentGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetrics ppMetrics);
+        ADLXResult GetCurrentFPS(out IADLXFPS ppMetrics);
+        ADLXResult GetSamplingIntervalRange(out ADLX_IntRange range);
+        int GetSamplingInterval();
+        IADLXGPUMetricsSupport GetSupportedGPUMetrics(IADLXGPU gpadlxGpuu);
+        IADLXGPUMetrics GetCurrentGPUMetrics(IADLXGPU adlxGpu);
+        IADLXFPS GetCurrentFPS();
         ADLX_IntRange GetSamplingIntervalRange();
         int CurrentFPS();
         SupportedGPUMetrics GetSupportedGPUMetricsForUniqueId(int uniqueId);
@@ -857,9 +989,9 @@ public static class AmdAdlx
                         {
                             if (adlxGpu.UniqueId() == uniqueId)
                             {
-                                using (IADLXGPUMetricsSupport adlxMetrixSupport = GetSupportedGPUMetrics(adlxGpu.ToPointer()))
+                                using (IADLXGPUMetricsSupport adlxMetrixSupport = GetSupportedGPUMetrics(adlxGpu))
                                 {
-                                    using (IADLXGPUMetrics adlxGPUMetrics = GetCurrentGPUMetrics(adlxGpu.ToPointer()))
+                                    using (IADLXGPUMetrics adlxGPUMetrics = GetCurrentGPUMetrics(adlxGpu))
                                     {
                                         gpuMetrics.TimeStamp = adlxGPUMetrics.TimeStamp();
                                         gpuMetrics.Add(Metric.MetricType.GPUUsage, adlxMetrixSupport.IsSupportedGPUUsage(), adlxGPUMetrics.GPUUsage(), Metric.DataType.Double, adlxMetrixSupport.GetGPUUsageRange());
@@ -899,7 +1031,7 @@ public static class AmdAdlx
                         {
                             if (adlxGpu.UniqueId() == uniqueId)
                             {
-                                using (IADLXGPUMetricsSupport adlxMetrixSupport = GetSupportedGPUMetrics(adlxGpu.ToPointer()))
+                                using (IADLXGPUMetricsSupport adlxMetrixSupport = GetSupportedGPUMetrics(adlxGpu))
                                 {
                                     if (adlxMetrixSupport.IsSupportedGPUUsage())
                                     {
@@ -965,33 +1097,62 @@ public static class AmdAdlx
             return supported;
         }
 
+        public ADLXResult GetCurrentFPS(out IADLXFPS adlxFps)
+        {
+            ADLXResult status = vtbl.GetCurrentFPS(_ptr, out IntPtr adlxFpsPtr);
+            adlxFps = new ADLXFPS(adlxFpsPtr);
+            return status;
+        }
+
         public IADLXFPS GetCurrentFPS()
         {
-            ADLXResult status = vtbl.GetCurrentFPS(_ptr, out IntPtr ppFps);
-            return status == ADLXResult.ADLX_OK ? new ADLXFPS(ppFps) : null;
+            return GetCurrentFPS(out IADLXFPS adlxFps) == ADLXResult.ADLX_OK ? adlxFps : null;
         }
 
-        public IADLXGPUMetricsSupport GetSupportedGPUMetrics(IntPtr gpu)
+        public ADLXResult GetSupportedGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetricsSupport ppMetricsSupported)
         {
-            ADLXResult status = vtbl.GetSupportedGPUMetrics(_ptr, gpu, out IntPtr ppMetricsSupported);
-            return status == ADLXResult.ADLX_OK ? new ADLXGPUMetricsSupport(ppMetricsSupported) : null;
+            ADLXResult status = vtbl.GetSupportedGPUMetrics(_ptr, adlxGpu.ToPointer(), out IntPtr ppMetricsSupportedPtr);
+            ppMetricsSupported = new ADLXGPUMetricsSupport(ppMetricsSupportedPtr);
+            return status;
         }
 
-        public IADLXGPUMetrics GetCurrentGPUMetrics(IntPtr gpu)
+        public IADLXGPUMetricsSupport GetSupportedGPUMetrics(IADLXGPU adlxGpu)
         {
-            ADLXResult status = vtbl.GetCurrentGPUMetrics(_ptr, gpu, out IntPtr ppMetrics);
-            return status == ADLXResult.ADLX_OK ? new ADLXGPUMetrics(ppMetrics) : null;
+            return GetSupportedGPUMetrics(adlxGpu, out IADLXGPUMetricsSupport ppMetricsSupported) == ADLXResult.ADLX_OK ? ppMetricsSupported : null;
+        }
+
+        public ADLXResult GetCurrentGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetrics gpuMetrics)
+        {
+            ADLXResult status = vtbl.GetCurrentGPUMetrics(_ptr, adlxGpu.ToPointer(), out IntPtr gpuMetricsPtr);
+            gpuMetrics = new ADLXGPUMetrics(gpuMetricsPtr);
+            return status;
+        }
+
+        public IADLXGPUMetrics GetCurrentGPUMetrics(IADLXGPU adlxGpu)
+        {
+            return GetCurrentGPUMetrics(adlxGpu, out IADLXGPUMetrics gpuMetrics) == ADLXResult.ADLX_OK ? gpuMetrics : null;
+        }
+
+        public ADLXResult GetSamplingIntervalRange(out ADLX_IntRange range)
+        {
+            return vtbl.GetSamplingIntervalRange(_ptr, out range);
+
         }
 
         public ADLX_IntRange GetSamplingIntervalRange()
         {
-            vtbl.GetSamplingIntervalRange(_ptr, out ADLX_IntRange range);
+            GetSamplingIntervalRange(out ADLX_IntRange range);
             return range;
+        }
+
+        public ADLXResult GetSamplingInterval(out int intervalMs)
+        {
+            return vtbl.GetSamplingInterval(_ptr, out intervalMs);
         }
 
         public int GetSamplingInterval()
         {
-            vtbl.GetSamplingInterval(_ptr, out int intervalMs);
+            GetSamplingInterval(out int intervalMs);
             return intervalMs;
         }
 
@@ -1000,17 +1161,17 @@ public static class AmdAdlx
             return vtbl.SetSamplingInterval(_ptr, intervalMs);
         }
 
-        public override void Acquire()
-        {
-            vtbl.adlxInterface.Acquire(_ptr);
-            LogDebug("=ADLXGPUMetrics acquired");
-        }
-
-        public override void Release()
+        public override long Release()
         {
             LogDebug("+ADLXPerformanceMonitoringServices release started");
-            vtbl.adlxInterface.Release(_ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
             LogDebug("+ADLXPerformanceMonitoringServices released");
+
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
@@ -1082,17 +1243,39 @@ public static class AmdAdlx
         bool IsSupportedGPUVRAM();
         bool IsSupportedGPUVoltage();
         bool IsSupportedGPUIntakeTemperature();
-        MetricRange GetGPUUsageRange();
-        MetricRange GetGPUClockSpeedRange();
-        MetricRange GetGPUVRAMClockSpeedRange();
-        MetricRange GetGPUTemperatureRange();
-        MetricRange GetGPUHotspotTemperatureRange();
-        MetricRange GetGPUPowerRange();
-        MetricRange GetGPUFanSpeedRange();
-        MetricRange GetGPUVRAMRange();
-        MetricRange GetGPUVoltageRange();
-        MetricRange GetGPUTotalBoardPowerRange();
-        MetricRange GetGPUIntakeTemperatureRange();
+        ADLX_IntRange GetGPUUsageRange();
+        ADLX_IntRange GetGPUClockSpeedRange();
+        ADLX_IntRange GetGPUVRAMClockSpeedRange();
+        ADLX_IntRange GetGPUTemperatureRange();
+        ADLX_IntRange GetGPUHotspotTemperatureRange();
+        ADLX_IntRange GetGPUPowerRange();
+        ADLX_IntRange GetGPUFanSpeedRange();
+        ADLX_IntRange GetGPUVRAMRange();
+        ADLX_IntRange GetGPUVoltageRange();
+        ADLX_IntRange GetGPUTotalBoardPowerRange();
+        ADLX_IntRange GetGPUIntakeTemperatureRange();
+        ADLXResult IsSupportedGPUUsage(out bool supported);
+        ADLXResult IsSupportedGPUClockSpeed(out bool supported);
+        ADLXResult IsSupportedGPUVRAMClockSpeed(out bool supported);
+        ADLXResult IsSupportedGPUTemperature(out bool supported);
+        ADLXResult IsSupportedGPUHotspotTemperature(out bool supported);
+        ADLXResult IsSupportedGPUPower(out bool supported);
+        ADLXResult IsSupportedGPUTotalBoardPower(out bool supported);
+        ADLXResult IsSupportedGPUFanSpeed(out bool supported);
+        ADLXResult IsSupportedGPUVRAM(out bool supported);
+        ADLXResult IsSupportedGPUVoltage(out bool supported);
+        ADLXResult IsSupportedGPUIntakeTemperature(out bool supported);
+        ADLXResult GetGPUUsageRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUClockSpeedRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUVRAMClockSpeedRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUTemperatureRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUHotspotTemperatureRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUPowerRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUFanSpeedRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUVRAMRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUVoltageRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUTotalBoardPowerRange(out int minValue, out int maxValue);
+        ADLXResult GetGPUIntakeTemperatureRange(out int minValue, out int maxValue);
     }
 
     private class ADLXGPUMetricsSupport : ADLXInterface, IADLXGPUMetricsSupport
@@ -1106,149 +1289,259 @@ public static class AmdAdlx
             GetVtblPointer(ptr, out vtbl);
         }
 
+        public ADLXResult IsSupportedGPUUsage(out bool supported)
+        {
+            return vtbl.IsSupportedGPUUsage(_ptr, out supported);
+        }
+
         public bool IsSupportedGPUUsage()
         {
-            vtbl.IsSupportedGPUUsage(_ptr, out bool supported);
+            IsSupportedGPUUsage(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUClockSpeed(out bool supported)
+        {
+            return vtbl.IsSupportedGPUClockSpeed(_ptr, out supported);
         }
 
         public bool IsSupportedGPUClockSpeed()
         {
-            vtbl.IsSupportedGPUClockSpeed(_ptr, out bool supported);
+            IsSupportedGPUClockSpeed(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUVRAMClockSpeed(out bool supported)
+        {
+            return vtbl.IsSupportedGPUVRAMClockSpeed(_ptr, out supported);
         }
 
         public bool IsSupportedGPUVRAMClockSpeed()
         {
-            vtbl.IsSupportedGPUVRAMClockSpeed(_ptr, out bool supported);
+            IsSupportedGPUVRAMClockSpeed(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUTemperature(out bool supported)
+        {
+            return vtbl.IsSupportedGPUTemperature(_ptr, out supported);
         }
 
         public bool IsSupportedGPUTemperature()
         {
-            vtbl.IsSupportedGPUTemperature(_ptr, out bool supported);
+            IsSupportedGPUTemperature(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUHotspotTemperature(out bool supported)
+        {
+            return vtbl.IsSupportedGPUHotspotTemperature(_ptr, out supported);
         }
 
         public bool IsSupportedGPUHotspotTemperature()
         {
-            vtbl.IsSupportedGPUHotspotTemperature(_ptr, out bool supported);
+            IsSupportedGPUHotspotTemperature(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUPower(out bool supported)
+        {
+            return vtbl.IsSupportedGPUPower(_ptr, out supported);
         }
 
         public bool IsSupportedGPUPower()
         {
-            vtbl.IsSupportedGPUPower(_ptr, out bool supported);
+            IsSupportedGPUPower(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUTotalBoardPower(out bool supported)
+        {
+            return vtbl.IsSupportedGPUTotalBoardPower(_ptr, out supported);
         }
 
         public bool IsSupportedGPUTotalBoardPower()
         {
-            vtbl.IsSupportedGPUTotalBoardPower(_ptr, out bool supported);
+            IsSupportedGPUTotalBoardPower(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUFanSpeed(out bool supported)
+        {
+            return vtbl.IsSupportedGPUFanSpeed(_ptr, out supported);
         }
 
         public bool IsSupportedGPUFanSpeed()
         {
-            vtbl.IsSupportedGPUFanSpeed(_ptr, out bool supported);
+            IsSupportedGPUFanSpeed(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUVRAM(out bool supported)
+        {
+            return vtbl.IsSupportedGPUVRAM(_ptr, out supported);
         }
 
         public bool IsSupportedGPUVRAM()
         {
-            vtbl.IsSupportedGPUVRAM(_ptr, out bool supported);
+            IsSupportedGPUVRAM(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUVoltage(out bool supported)
+        {
+            return vtbl.IsSupportedGPUVoltage(_ptr, out supported);
         }
 
         public bool IsSupportedGPUVoltage()
         {
-            vtbl.IsSupportedGPUVoltage(_ptr, out bool supported);
+            IsSupportedGPUVoltage(out bool supported);
             return supported;
+        }
+
+        public ADLXResult IsSupportedGPUIntakeTemperature(out bool supported)
+        {
+            return vtbl.IsSupportedGPUIntakeTemperature(_ptr, out supported);
         }
 
         public bool IsSupportedGPUIntakeTemperature()
         {
-            vtbl.IsSupportedGPUIntakeTemperature(_ptr, out bool supported);
+            IsSupportedGPUIntakeTemperature(out bool supported);
             return supported;
         }
 
-        public MetricRange GetGPUUsageRange()
+        public ADLXResult GetGPUUsageRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUUsageRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUUsageRange(_ptr, out minValue, out maxValue);
         }
 
-        public MetricRange GetGPUClockSpeedRange()
+        public ADLX_IntRange GetGPUUsageRange()
         {
-            vtbl.GetGPUClockSpeedRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            GetGPUUsageRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = 0, maxValue = max };
         }
 
-        public MetricRange GetGPUVRAMClockSpeedRange()
+        public ADLXResult GetGPUClockSpeedRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUVRAMClockSpeedRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUClockSpeedRange(_ptr, out minValue, out maxValue);
         }
 
-        public MetricRange GetGPUTemperatureRange()
+        public ADLX_IntRange GetGPUClockSpeedRange()
         {
-            vtbl.GetGPUTemperatureRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            GetGPUClockSpeedRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
-        public MetricRange GetGPUHotspotTemperatureRange()
+        public ADLXResult GetGPUVRAMClockSpeedRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUHotspotTemperatureRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUVRAMClockSpeedRange(_ptr, out minValue, out maxValue);
         }
 
-        public MetricRange GetGPUPowerRange()
+        public ADLX_IntRange GetGPUVRAMClockSpeedRange()
         {
-            vtbl.GetGPUPowerRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            GetGPUVRAMClockSpeedRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
-        public MetricRange GetGPUFanSpeedRange()
+        public ADLXResult GetGPUTemperatureRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUFanSpeedRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUTemperatureRange(_ptr, out minValue, out maxValue);
         }
 
-        public MetricRange GetGPUVRAMRange()
+        public ADLX_IntRange GetGPUTemperatureRange()
         {
-            vtbl.GetGPUVRAMRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            GetGPUTemperatureRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
-        public MetricRange GetGPUVoltageRange()
+        public ADLXResult GetGPUHotspotTemperatureRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUVoltageRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUHotspotTemperatureRange(_ptr, out minValue, out maxValue);
         }
 
-        public MetricRange GetGPUTotalBoardPowerRange()
+        public ADLX_IntRange GetGPUHotspotTemperatureRange()
         {
-            vtbl.GetGPUTotalBoardPowerRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            GetGPUHotspotTemperatureRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
-        public MetricRange GetGPUIntakeTemperatureRange()
+        public ADLXResult GetGPUPowerRange(out int minValue, out int maxValue)
         {
-            vtbl.GetGPUIntakeTemperatureRange(_ptr, out int minValue, out int maxValue);
-            return new MetricRange() { min = minValue, max = maxValue };
+            return vtbl.GetGPUPowerRange(_ptr, out minValue, out maxValue);
         }
 
-        public override void Acquire()
+        public ADLX_IntRange GetGPUPowerRange()
         {
-            vtbl.adlxInterface.Acquire(_ptr);
-            LogDebug("=ADLXGPUMetricsSupport acquired");
+            GetGPUPowerRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
-        public override void Release()
+        public ADLXResult GetGPUFanSpeedRange(out int minValue, out int maxValue)
+        {
+            return vtbl.GetGPUFanSpeedRange(_ptr, out minValue, out maxValue);
+        }
+
+        public ADLX_IntRange GetGPUFanSpeedRange()
+        {
+            GetGPUFanSpeedRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
+        }
+
+        public ADLXResult GetGPUVRAMRange(out int minValue, out int maxValue)
+        {
+            return vtbl.GetGPUVRAMRange(_ptr, out minValue, out maxValue);
+        }
+
+        public ADLX_IntRange GetGPUVRAMRange()
+        {
+            GetGPUVRAMRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
+        }
+
+        public ADLXResult GetGPUVoltageRange(out int minValue, out int maxValue)
+        {
+            return vtbl.GetGPUVoltageRange(_ptr, out minValue, out maxValue);
+        }
+
+        public ADLX_IntRange GetGPUVoltageRange()
+        {
+            GetGPUVoltageRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
+        }
+
+        public ADLXResult GetGPUTotalBoardPowerRange(out int minValue, out int maxValue)
+        {
+            return vtbl.GetGPUTotalBoardPowerRange(_ptr, out minValue, out maxValue);
+        }
+
+        public ADLX_IntRange GetGPUTotalBoardPowerRange()
+        {
+            GetGPUTotalBoardPowerRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
+        }
+
+        public ADLXResult GetGPUIntakeTemperatureRange(out int minValue, out int maxValue)
+        {
+            return vtbl.GetGPUIntakeTemperatureRange(_ptr, out minValue, out maxValue);
+        }
+
+        public ADLX_IntRange GetGPUIntakeTemperatureRange()
+        {
+            GetGPUIntakeTemperatureRange(out int min, out int max);
+            return new ADLX_IntRange() { minValue = min, maxValue = max };
+        }
+
+        public override long Release()
         {
             LogDebug("+ADLXGPUMetricsSupport release started");
-            vtbl.adlxInterface.Release(_ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
             LogDebug("+ADLXGPUMetricsSupport released");
+
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
@@ -1356,6 +1649,18 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXGPUMetrics : IADLXInterface
     {
+        ADLXResult TimeStamp(out long timestamp);
+        ADLXResult GPUUsage(out double data);
+        ADLXResult GPUClockSpeed(out int data);
+        ADLXResult GPUVRAMClockSpeed(out int data);
+        ADLXResult GPUTemperature(out double data);
+        ADLXResult GPUHotspotTemperature(out double data);
+        ADLXResult GPUPower(out double data);
+        ADLXResult GPUTotalBoardPower(out double data);
+        ADLXResult GPUFanSpeed(out int data);
+        ADLXResult GPUVRAM(out int data);
+        ADLXResult GPUVoltage(out int data);
+        ADLXResult GPUIntakeTemperature(out double data);
         long TimeStamp();
         double GPUUsage();
         int GPUClockSpeed();
@@ -1381,90 +1686,149 @@ public static class AmdAdlx
             GetVtblPointer(ptr, out vtbl);
         }
 
+        public ADLXResult TimeStamp(out long timestamp)
+        {
+            return vtbl.TimeStamp(_ptr, out timestamp);
+        }
+
         public long TimeStamp()
         {
-            vtbl.TimeStamp(_ptr, out long data);
-            return data;
+            TimeStamp(out long timestamp);
+            return timestamp;
+        }
+
+        public ADLXResult GPUUsage(out double data)
+        {
+            return vtbl.GPUUsage(_ptr, out data);
         }
 
         public double GPUUsage()
         {
-            vtbl.GPUUsage(_ptr, out double data);
+            GPUUsage(out double data);
             return data;
+        }
+
+        public ADLXResult GPUClockSpeed(out int data)
+        {
+            return vtbl.GPUClockSpeed(_ptr, out data);
         }
 
         public int GPUClockSpeed()
         {
-            vtbl.GPUClockSpeed(_ptr, out int data);
+            GPUClockSpeed(out int data);
             return data;
+        }
+
+        public ADLXResult GPUVRAMClockSpeed(out int data)
+        {
+            return vtbl.GPUVRAMClockSpeed(_ptr, out data);
         }
 
         public int GPUVRAMClockSpeed()
         {
-            vtbl.GPUVRAMClockSpeed(_ptr, out int data);
+            GPUVRAMClockSpeed(out int data);
             return data;
+        }
+
+        public ADLXResult GPUTemperature(out double data)
+        {
+            return vtbl.GPUTemperature(_ptr, out data);
         }
 
         public double GPUTemperature()
         {
-            vtbl.GPUTemperature(_ptr, out double data);
+            GPUTemperature(out double data);
             return data;
+        }
+
+        public ADLXResult GPUHotspotTemperature(out double data)
+        {
+            return vtbl.GPUHotspotTemperature(_ptr, out data);
         }
 
         public double GPUHotspotTemperature()
         {
-            vtbl.GPUHotspotTemperature(_ptr, out double data);
+            GPUHotspotTemperature(out double data);
             return data;
+        }
+
+        public ADLXResult GPUPower(out double data)
+        {
+            return vtbl.GPUPower(_ptr, out data);
         }
 
         public double GPUPower()
         {
-            vtbl.GPUPower(_ptr, out double data);
+            GPUPower(out double data);
             return data;
+        }
+
+        public ADLXResult GPUTotalBoardPower(out double data)
+        {
+            return vtbl.GPUTotalBoardPower(_ptr, out data);
         }
 
         public double GPUTotalBoardPower()
         {
-            vtbl.GPUTotalBoardPower(_ptr, out double data);
+            GPUTotalBoardPower(out double data);
             return data;
+        }
+
+        public ADLXResult GPUFanSpeed(out int data)
+        {
+            return vtbl.GPUFanSpeed(_ptr, out data);
         }
 
         public int GPUFanSpeed()
         {
-            vtbl.GPUFanSpeed(_ptr, out int data);
+            GPUFanSpeed(out int data);
             return data;
+        }
+
+        public ADLXResult GPUVRAM(out int data)
+        {
+            return vtbl.GPUVRAM(_ptr, out data);
         }
 
         public int GPUVRAM()
         {
-            vtbl.GPUVRAM(_ptr, out int data);
+            GPUVRAM(out int data);
             return data;
+        }
+
+        public ADLXResult GPUVoltage(out int data)
+        {
+            return vtbl.GPUVoltage(_ptr, out data);
         }
 
         public int GPUVoltage()
         {
-            vtbl.GPUVoltage(_ptr, out int data);
+            GPUVoltage(out int data);
             return data;
+        }
+
+        public ADLXResult GPUIntakeTemperature(out double data)
+        {
+            return vtbl.GPUIntakeTemperature(_ptr, out data);
         }
 
         public double GPUIntakeTemperature()
         {
-            vtbl.GPUIntakeTemperature(_ptr, out double data);
+            GPUIntakeTemperature(out double data);
             return data;
         }
 
-        public override void Acquire()
-        {
-            vtbl.adlxInterface.Acquire(_ptr);
-            LogDebug("=ADLXGPUMetrics acquired");
-        }
-
-        public override void Release()
+        public override long Release()
         {
             LogDebug("+ADLXGPUMetrics release started");
-            vtbl.adlxInterface.Release(_ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
             LogDebug("+ADLXGPUMetrics released");
 
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
@@ -1532,6 +1896,8 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXFPS : IADLXInterface
     {
+        ADLXResult TimeStamp(out long timestamp);
+        ADLXResult FPS(out int data);
         long TimeStamp();
         int FPS();
     }
@@ -1547,31 +1913,41 @@ public static class AmdAdlx
             GetVtblPointer(ptr, out vtbl);
         }
 
+        public ADLXResult TimeStamp(out long timestamp)
+        {
+            return vtbl.TimeStamp(_ptr, out timestamp);
+        }
+
         public long TimeStamp()
         {
-            vtbl.TimeStamp(_ptr, out long data);
-            return data;
+
+            TimeStamp(out long timestamp);
+            return timestamp;
+        }
+
+        public ADLXResult FPS(out int data)
+        {
+            return vtbl.FPS(_ptr, out data);
         }
 
         public int FPS()
         {
             int data = -1;
-            vtbl.FPS(_ptr, out data);
+            FPS(out data);
             return data;
         }
 
-        public override void Acquire()
-        {
-            vtbl.adlxInterface.Acquire(_ptr);
-            LogDebug("=ADLXFPS acquired");
-        }
-
-        public override void Release()
+        public override long Release()
         {
             LogDebug("+ADLXFPS release started");
-            vtbl.adlxInterface.Release(_ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
             LogDebug("+ADLXFPS released");
 
+            return release;
         }
 
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
@@ -1600,8 +1976,8 @@ public static class AmdAdlx
     public interface IADLXInterface : IDisposable
     {
         IntPtr ToPointer();
-        void Acquire();
-        void Release();
+        long Acquire();
+        long Release();
     }
 
     protected class ADLXInterface : IADLXInterface
@@ -1613,8 +1989,6 @@ public static class AmdAdlx
         {
             _ptr = ptr;
             GetVtblPointer(ptr, out vtbl);
-            // Acquire not needed, results in memory leak when enabled
-            vtbl.Acquire = null;
         }
 
         public IntPtr ToPointer()
@@ -1622,12 +1996,12 @@ public static class AmdAdlx
             return _ptr;
         }
 
-        public virtual void Acquire()
+        public virtual long Acquire()
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException("Acquire is not supported.");
         }
 
-        public virtual void Release()
+        public virtual long Release()
         {
             throw new NotImplementedException();
         }
@@ -1721,12 +2095,6 @@ public static class AmdAdlx
         }
     }
 
-    public struct MetricRange
-    {
-        public int min;
-        public int max;
-    }
-
     /**************************************************************************/
     /*** Models ***/
     /**************************************************************************/
@@ -1814,14 +2182,14 @@ public static class AmdAdlx
             Integer,
         }
 
-        public Metric(MetricType type, bool supported, double data, DataType dataType, MetricRange metricRange)
+        public Metric(MetricType type, bool supported, double data, DataType dataType, ADLX_IntRange metricRange)
         {
             this.type = type;
             this.supported = supported;
             this.data = data;
             this.dataType = dataType;
-            this.rangeMin = metricRange.min;
-            this.rangeMax = metricRange.max;
+            this.rangeMin = metricRange.minValue;
+            this.rangeMax = metricRange.maxValue;
         }
 
         public override bool Equals(object obj)
@@ -1890,7 +2258,7 @@ public static class AmdAdlx
             return metrics.First(m => m.GetMetricType().Equals(name));
         }
 
-        public void Add(Metric.MetricType metricType, bool supported, double data, Metric.DataType dataType, MetricRange metricRange)
+        public void Add(Metric.MetricType metricType, bool supported, double data, Metric.DataType dataType, ADLX_IntRange metricRange)
         {
             metrics.Add(new Metric(metricType, supported, data, dataType, metricRange));
         }

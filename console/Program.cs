@@ -105,6 +105,8 @@ public class Program
                     AmdAdlx.ADLX_IntRange range = perf.GetSamplingIntervalRange();
                     Console.WriteLine("SamplingRange: min:{0};max:{1};step:{2};", range.minValue, range.maxValue, range.step);
 
+                    Console.WriteLine("SamplingInterval: {0}", perf.GetSamplingInterval());
+
                     int j = 10;
                     while (j > 0)
                     {
