@@ -25,20 +25,20 @@ public static class AmdAdlx
     private static bool adlxInitialized = false;
     private static bool mappingAdl = false;
 
-    public delegate void ADLX_ADL_Main_Memory_Free(ref IntPtr buffer);
-    public static ADLX_ADL_Main_Memory_Free Main_Memory_Free_Delegate = Main_Memory_Free;
+    private delegate void ADLX_ADL_Main_Memory_Free(ref IntPtr buffer);
+    private static ADLX_ADL_Main_Memory_Free Main_Memory_Free_Delegate = Main_Memory_Free;
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    public static extern ADLXResult ADLXInitializeWithCallerAdl(ref ulong adlxVersion, out IntPtr adlxSystem, out IntPtr adlMapping, IntPtr context, ADLX_ADL_Main_Memory_Free callback);
+    private static extern ADLXResult ADLXInitializeWithCallerAdl(ref ulong adlxVersion, out IntPtr adlxSystem, out IntPtr adlMapping, IntPtr context, ADLX_ADL_Main_Memory_Free callback);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    public static extern ADLXResult ADLXInitialize(ref ulong adlxVersion, out IntPtr adlxSystem);
+    private static extern ADLXResult ADLXInitialize(ref ulong adlxVersion, out IntPtr adlxSystem);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    public static extern ADLXResult ADLXQueryFullVersion(ref ulong fullVersion);
+    private static extern ADLXResult ADLXQueryFullVersion(ref ulong fullVersion);
 
     public static void Initialize(ILogger logger = null)
     {
