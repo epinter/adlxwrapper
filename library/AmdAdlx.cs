@@ -93,6 +93,16 @@ public static class AmdAdlx
         return mappingAdl;
     }
 
+    public static bool IsSucceeded(ADLXResult result)
+    {
+        return result == ADLXResult.ADLX_OK || result == ADLXResult.ADLX_ALREADY_ENABLED || result == ADLXResult.ADLX_ALREADY_INITIALIZED;
+    }
+
+    public static bool IsFailed(ADLXResult result)
+    {
+        return !IsSucceeded(result);
+    }
+
     public static IADLXSystem GetSystemServices()
     {
         if (!adlxInitialized)
@@ -233,6 +243,8 @@ public static class AmdAdlx
         ADLXResult TotalSystemRAM(out uint ramMB);
         IADLXGPUList GetGPUs();
         IADLXPerformanceMonitoringServices GetPerformanceMonitoringServices();
+        IADLXGPUTuningServices GetGPUTuningServices();
+        IADLXGPU GetADLXGPUByUniqueId(int uniqueId);
         uint GetTotalSystemRAM();
         List<GPU> GetGPUList();
     }
@@ -250,8 +262,32 @@ public static class AmdAdlx
 
         public IADLXGPUList GetGPUs()
         {
-            ADLXResult status = vtbl.GetGPUs(_ptr, out nint gpuListPtr);
+            ADLXResult status = vtbl.GetGPUs(_ptr, out IntPtr gpuListPtr);
             return status == ADLXResult.ADLX_OK ? new ADLXGPUList(gpuListPtr) : null;
+        }
+
+        public IADLXGPU GetADLXGPUByUniqueId(int uniqueId)
+        {
+            using (IADLXGPUList adlxGPUList = GetSystemServices().GetGPUs())
+            {
+                for (int i = 0; i < adlxGPUList.Size(); i++)
+                {
+                    if (adlxGPUList.At_GPUList((uint)i, out IADLXGPU adlxGpu) == ADLXResult.ADLX_OK)
+                    {
+                        if (adlxGpu.UniqueId() == uniqueId)
+                        {
+                            LogDebug("__returning ADLXGPU pointer");
+                            return adlxGpu;
+                        }
+                        else
+                        {
+                            adlxGpu.Dispose();
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         public List<GPU> GetGPUList()
@@ -329,19 +365,25 @@ public static class AmdAdlx
             return status == ADLXResult.ADLX_OK ? new ADLXPerformanceMonitoringServices(performanceMonitoringServices) : null;
         }
 
+        public IADLXGPUTuningServices GetGPUTuningServices()
+        {
+            ADLXResult status = vtbl.GetGPUTuningServices(_ptr, out IntPtr gpuTuningServices);
+            return status == ADLXResult.ADLX_OK ? new ADLXGPUTuningServices(gpuTuningServices) : null;
+        }
+
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXSystemVtbl
         {
             public IntPtr GetHybridGraphicsType;
-            public ADLXSystemDelegates.ADLXSystem_GetGPUs GetGPUs;
-            public ADLXSystemDelegates.ADLXSystem_QueryInterface QueryInterface;
+            public ADLXSystemDelegates.GetGPUs GetGPUs;
+            public ADLXSystemDelegates.QueryInterface QueryInterface;
             public IntPtr GetDisplaysServices;
             public IntPtr GetDesktopsServices;
             public IntPtr GetGPUsChangedHandling;
             public IntPtr EnableLog;
             public IntPtr Get3DSettingsServices;
-            public IntPtr GetGPUTuningServices;
+            public ADLXSystemDelegates.GetGPUTuningServices GetGPUTuningServices;
             public ADLXSystemDelegates.GetPerformanceMonitoringServices GetPerformanceMonitoringServices;
             public ADLXSystemDelegates.TotalSystemRAM TotalSystemRAM;
             public IntPtr GetI2C;
@@ -353,13 +395,16 @@ public static class AmdAdlx
             public delegate ADLXResult TotalSystemRAM(IntPtr adlxSystem, out uint ramMB);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-            public delegate ADLXResult ADLXSystem_GetGPUs(IntPtr adlxSystem, out IntPtr gpus);
+            public delegate ADLXResult GetGPUs(IntPtr adlxSystem, out IntPtr gpus);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-            public delegate ADLXResult ADLXSystem_QueryInterface(IntPtr adlxSystem, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
+            public delegate ADLXResult QueryInterface(IntPtr adlxSystem, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetPerformanceMonitoringServices(IntPtr adlxSystem, out IntPtr gpus);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetGPUTuningServices(IntPtr iadlxSystem, out IntPtr ppGPUTuningServices);
         }
     }
 
@@ -897,6 +942,11 @@ public static class AmdAdlx
             return ADLXResult.ADLX_INVALID_ARGS;
         }
 
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
         public override long Release()
         {
             LogDebug("+ADLXGPUList release started");
@@ -1159,6 +1209,11 @@ public static class AmdAdlx
         public ADLXResult SetSamplingInterval(int intervalMs)
         {
             return vtbl.SetSamplingInterval(_ptr, intervalMs);
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
         }
 
         public override long Release()
@@ -1531,6 +1586,11 @@ public static class AmdAdlx
             return new ADLX_IntRange() { minValue = min, maxValue = max };
         }
 
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
         public override long Release()
         {
             LogDebug("+ADLXGPUMetricsSupport release started");
@@ -1818,6 +1878,11 @@ public static class AmdAdlx
             return data;
         }
 
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
         public override long Release()
         {
             LogDebug("+ADLXGPUMetrics release started");
@@ -1937,6 +2002,11 @@ public static class AmdAdlx
             return data;
         }
 
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
         public override long Release()
         {
             LogDebug("+ADLXFPS release started");
@@ -1971,6 +2041,730 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+        IADLXGPUTuningServices
+    *************************************************************************/
+    public interface IADLXGPUTuningServices : IADLXInterface
+    {
+        ADLXResult IsAtFactory(IADLXGPU adlxGpu, out bool isFactory);
+        ADLXResult ResetToFactory(IADLXGPU adlxGpu);
+        ADLXResult IsSupportedAutoTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult IsSupportedPresetTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult IsSupportedManualGFXTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult IsSupportedManualVRAMTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult IsSupportedManualFanTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult IsSupportedManualPowerTuning(IADLXGPU adlxGpu, out bool supported);
+        ADLXResult GetManualFanTuning(IADLXGPU adlxGpu, out IADLXManualFanTuning ppManualFanTuning);
+        bool IsSupportedManualFanTuning(int gpuUniqueId);
+        IADLXManualFanTuning GetManualFanTuning(IADLXGPU adlxGpu);
+        bool IsSupportedAutoTuning(int gpuUniqueId);
+        bool IsSupportedPresetTuning(int gpuUniqueId);
+        bool IsSupportedManualGFXTuning(int gpuUniqueId);
+        bool IsSupportedManualVRAMTuning(int gpuUniqueId);
+        bool IsSupportedManualPowerTuning(int gpuUniqueId);
+
+    }
+
+    private class ADLXGPUTuningServices : ADLXInterface, IADLXGPUTuningServices
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXGPUTuningServicesVtbl vtbl;
+
+        internal ADLXGPUTuningServices(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult GetManualFanTuning(IADLXGPU adlxGpu, out IADLXManualFanTuning ppManualFanTuning)
+        {
+            ADLXResult status = vtbl.GetManualFanTuning(_ptr, adlxGpu.ToPointer(), out IntPtr manualFanTuningPtr);
+            ppManualFanTuning = new ADLXManualFanTuning(manualFanTuningPtr);
+            return status;
+        }
+
+        public IADLXManualFanTuning GetManualFanTuning(IADLXGPU adlxGpu)
+        {
+            return GetManualFanTuning(adlxGpu, out IADLXManualFanTuning ppManualFanTuning) == ADLXResult.ADLX_OK ? ppManualFanTuning : null;
+        }
+
+        public ADLXResult IsSupportedManualFanTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedManualFanTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public bool IsSupportedManualFanTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedManualFanTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public ADLXResult IsSupportedAutoTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedAutoTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public ADLXResult IsSupportedPresetTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedPresetTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public ADLXResult IsSupportedManualGFXTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedManualGFXTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public ADLXResult IsSupportedManualVRAMTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedManualVRAMTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public ADLXResult IsSupportedManualPowerTuning(IADLXGPU adlxGpu, out bool supported)
+        {
+            return vtbl.IsSupportedManualPowerTuning(_ptr, adlxGpu.ToPointer(), out supported);
+        }
+
+        public bool IsSupportedAutoTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedAutoTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public bool IsSupportedPresetTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedPresetTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public bool IsSupportedManualGFXTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedManualGFXTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public bool IsSupportedManualVRAMTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedManualVRAMTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public bool IsSupportedManualPowerTuning(int gpuUniqueId)
+        {
+            using (IADLXGPU adlxGpu = systemInstance.GetADLXGPUByUniqueId(gpuUniqueId))
+            {
+                return IsSupportedManualVRAMTuning(adlxGpu, out bool supported) == ADLXResult.ADLX_OK ? supported : false;
+            }
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXGPUTuningServices release started");
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXGPUTuningServices released");
+
+            return release;
+        }
+
+        public ADLXResult IsAtFactory(IADLXGPU adlxGpu, out bool isFactory)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ADLXResult ResetToFactory(IADLXGPU adlxGpu)
+        {
+            throw new NotImplementedException();
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXGPUTuningServicesVtbl
+        {
+            public ADLXInterfaceVtbl adlxInterface;
+
+            public ADLXGPUTuningServicesDelegates.GetGPUTuningChangedHandling GetGPUTuningChangedHandling;
+            public ADLXGPUTuningServicesDelegates.IsAtFactory IsAtFactory;
+            public ADLXGPUTuningServicesDelegates.ResetToFactory ResetToFactory;
+            public ADLXGPUTuningServicesDelegates.IsSupportedAutoTuning IsSupportedAutoTuning;
+            public ADLXGPUTuningServicesDelegates.IsSupportedPresetTuning IsSupportedPresetTuning;
+            public ADLXGPUTuningServicesDelegates.IsSupportedManualGFXTuning IsSupportedManualGFXTuning;
+            public ADLXGPUTuningServicesDelegates.IsSupportedManualVRAMTuning IsSupportedManualVRAMTuning;
+            public ADLXGPUTuningServicesDelegates.IsSupportedManualFanTuning IsSupportedManualFanTuning;
+            public ADLXGPUTuningServicesDelegates.IsSupportedManualPowerTuning IsSupportedManualPowerTuning;
+            public ADLXGPUTuningServicesDelegates.GetAutoTuning GetAutoTuning;
+            public ADLXGPUTuningServicesDelegates.GetPresetTuning GetPresetTuning;
+            public ADLXGPUTuningServicesDelegates.GetManualGFXTuning GetManualGFXTuning;
+            public ADLXGPUTuningServicesDelegates.GetManualVRAMTuning GetManualVRAMTuning;
+            public ADLXGPUTuningServicesDelegates.GetManualFanTuning GetManualFanTuning;
+            public ADLXGPUTuningServicesDelegates.GetManualPowerTuning GetManualPowerTuning;
+        }
+
+        protected static class ADLXGPUTuningServicesDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetGPUTuningChangedHandling(IntPtr iadlxGPUTuningServices, out IntPtr ppGPUTuningChangedHandling);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsAtFactory(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool isFactory);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult ResetToFactory(IntPtr iadlxGPUTuningServices, IntPtr pGPU);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedAutoTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedPresetTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedManualGFXTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedManualVRAMTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedManualFanTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedManualPowerTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetAutoTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppAutoTuning);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetPresetTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppPresetTuning);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetManualGFXTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualGFXTuning);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetManualVRAMTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualVRAMTuning);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetManualFanTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualFanTuning);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetManualPowerTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualPowerTuning);
+        }
+    }
+
+    /*************************************************************************
+        IADLXManualFanTuning
+    *************************************************************************/
+    public interface IADLXManualFanTuning : IADLXInterface
+    {
+        ADLXResult GetFanTuningRanges(out ADLX_IntRange speedRange, out ADLX_IntRange temperatureRange);
+        ADLXResult GetFanTuningStates(out IADLXManualFanTuningStateList ppStates);
+        ADLXResult GetEmptyFanTuningStates(out IADLXManualFanTuningStateList ppStates);
+        ADLXResult IsValidFanTuningStates(IADLXManualFanTuningStateList pStates, out int errorIndex);
+        ADLXResult SetFanTuningStates(IADLXManualFanTuningStateList pStates);
+        ADLXResult IsSupportedZeroRPM(out bool supported);
+        ADLXResult GetZeroRPMState(out bool isSet);
+        ADLXResult SetZeroRPMState(bool set);
+        ADLXResult IsSupportedMinAcousticLimit(out bool supported);
+        ADLXResult GetMinAcousticLimitRange(out ADLX_IntRange tuningRange);
+        ADLXResult GetMinAcousticLimit(out int value);
+        ADLXResult SetMinAcousticLimit(int value);
+        ADLXResult IsSupportedMinFanSpeed(out bool supported);
+        ADLXResult GetMinFanSpeedRange(out ADLX_IntRange tuningRange);
+        ADLXResult GetMinFanSpeed(out int value);
+        ADLXResult SetMinFanSpeed(int value);
+        ADLXResult IsSupportedTargetFanSpeed(out bool supported);
+        ADLXResult GetTargetFanSpeedRange(out ADLX_IntRange tuningRange);
+        ADLXResult GetTargetFanSpeed(out int value);
+        ADLXResult SetTargetFanSpeed(int value);
+
+        IADLXManualFanTuningStateList GetFanTuningStates();
+        IADLXManualFanTuningStateList GetEmptyFanTuningStates();
+        int IsValidFanTuningStates(IADLXManualFanTuningStateList pStates);
+        bool IsSupportedZeroRPM();
+        bool IsSupportedMinAcousticLimit();
+        bool IsSupportedMinFanSpeed();
+        bool IsSupportedTargetFanSpeed();
+        bool GetZeroRPMState();
+        int GetMinAcousticLimit();
+        int GetMinFanSpeed();
+        int GetTargetFanSpeed();
+        ADLX_IntRange GetMinAcousticLimitRange();
+        ADLX_IntRange GetMinFanSpeedRange();
+        ADLX_IntRange GetTargetFanSpeedRange();
+
+    }
+
+    private class ADLXManualFanTuning : ADLXInterface, IADLXManualFanTuning
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXManualFanTuningVtbl vtbl;
+
+        internal ADLXManualFanTuning(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult GetEmptyFanTuningStates(out IADLXManualFanTuningStateList ppStates)
+        {
+            ADLXResult status = vtbl.GetEmptyFanTuningStates(_ptr, out IntPtr ppStatesPtr);
+            ppStates = new ADLXManualFanTuningStateList(ppStatesPtr);
+            return status;
+        }
+
+        public IADLXManualFanTuningStateList GetEmptyFanTuningStates()
+        {
+            GetEmptyFanTuningStates(out IADLXManualFanTuningStateList ppStates);
+            return ppStates;
+        }
+
+        public ADLXResult GetFanTuningStates(out IADLXManualFanTuningStateList ppStates)
+        {
+            ADLXResult status = vtbl.GetFanTuningStates(_ptr, out IntPtr ppStatesPtr);
+            ppStates = new ADLXManualFanTuningStateList(ppStatesPtr);
+            return status;
+        }
+
+        public IADLXManualFanTuningStateList GetFanTuningStates()
+        {
+            GetFanTuningStates(out IADLXManualFanTuningStateList ppStates);
+            return ppStates;
+        }
+
+        public ADLXResult GetFanTuningRanges(out ADLX_IntRange speedRange, out ADLX_IntRange temperatureRange)
+        {
+            return vtbl.GetFanTuningRanges(_ptr, out speedRange, out temperatureRange);
+        }
+
+        public ADLXResult GetMinAcousticLimit(out int value)
+        {
+            return vtbl.GetMinAcousticLimit(_ptr, out value);
+        }
+
+        public ADLXResult GetMinAcousticLimitRange(out ADLX_IntRange tuningRange)
+        {
+            return vtbl.GetMinAcousticLimitRange(_ptr, out tuningRange);
+        }
+
+        public ADLXResult GetMinFanSpeed(out int value)
+        {
+            return vtbl.GetMinFanSpeed(_ptr, out value);
+        }
+
+        public ADLXResult GetMinFanSpeedRange(out ADLX_IntRange tuningRange)
+        {
+            return vtbl.GetMinFanSpeedRange(_ptr, out tuningRange);
+        }
+
+        public ADLXResult GetTargetFanSpeed(out int value)
+        {
+            return vtbl.GetTargetFanSpeed(_ptr, out value);
+        }
+
+        public ADLXResult GetTargetFanSpeedRange(out ADLX_IntRange tuningRange)
+        {
+            return vtbl.GetTargetFanSpeedRange(_ptr, out tuningRange);
+        }
+
+        public ADLXResult IsSupportedZeroRPM(out bool supported)
+        {
+            return vtbl.IsSupportedZeroRPM(_ptr, out supported);
+        }
+
+        public bool IsSupportedZeroRPM()
+        {
+            IsSupportedZeroRPM(out bool supported);
+            return supported;
+        }
+
+        public ADLXResult GetZeroRPMState(out bool isSet)
+        {
+            return vtbl.GetZeroRPMState(_ptr, out isSet);
+        }
+
+        public bool GetZeroRPMState()
+        {
+            GetZeroRPMState(out bool isSet);
+            return isSet;
+        }
+
+        public ADLXResult IsSupportedMinAcousticLimit(out bool supported)
+        {
+            return vtbl.IsSupportedMinAcousticLimit(_ptr, out supported);
+        }
+
+        public bool IsSupportedMinAcousticLimit()
+        {
+            IsSupportedMinAcousticLimit(out bool supported);
+            return supported;
+        }
+
+        public ADLXResult IsSupportedMinFanSpeed(out bool supported)
+        {
+            return vtbl.IsSupportedMinFanSpeed(_ptr, out supported);
+        }
+
+        public bool IsSupportedMinFanSpeed()
+        {
+            IsSupportedMinFanSpeed(out bool supported);
+            return supported;
+        }
+
+        public ADLXResult IsSupportedTargetFanSpeed(out bool supported)
+        {
+            return vtbl.IsSupportedTargetFanSpeed(_ptr, out supported);
+        }
+
+        public bool IsSupportedTargetFanSpeed()
+        {
+            IsSupportedTargetFanSpeed(out bool supported);
+            return supported;
+        }
+
+        public ADLXResult IsValidFanTuningStates(IADLXManualFanTuningStateList pStates, out int errorIndex)
+        {
+            return vtbl.IsValidFanTuningStates(_ptr, pStates.ToPointer(), out errorIndex);
+        }
+
+        public int IsValidFanTuningStates(IADLXManualFanTuningStateList pStates)
+        {
+            IsValidFanTuningStates(pStates, out int errorIndex);
+            return errorIndex;
+        }
+
+        public ADLXResult SetFanTuningStates(IADLXManualFanTuningStateList pStates)
+        {
+            return vtbl.SetFanTuningStates(_ptr, pStates.ToPointer());
+        }
+
+        public ADLXResult SetMinAcousticLimit(int value)
+        {
+            return vtbl.SetMinAcousticLimit(_ptr, value);
+        }
+
+        public ADLXResult SetMinFanSpeed(int value)
+        {
+            return vtbl.SetMinFanSpeed(_ptr, value);
+        }
+
+        public ADLXResult SetTargetFanSpeed(int value)
+        {
+            return vtbl.SetTargetFanSpeed(_ptr, value);
+        }
+
+        public ADLXResult SetZeroRPMState(bool set)
+        {
+            return vtbl.SetZeroRPMState(_ptr, set);
+        }
+
+        public int GetMinAcousticLimit()
+        {
+            GetMinAcousticLimit(out int value);
+            return value;
+        }
+
+        public int GetMinFanSpeed()
+        {
+            GetMinFanSpeed(out int value);
+            return value;
+        }
+
+        public int GetTargetFanSpeed()
+        {
+            GetTargetFanSpeed(out int value);
+            return value;
+        }
+
+        public ADLX_IntRange GetMinAcousticLimitRange()
+        {
+            GetMinAcousticLimitRange(out ADLX_IntRange range);
+            return range;
+        }
+
+        public ADLX_IntRange GetMinFanSpeedRange()
+        {
+            GetMinFanSpeedRange(out ADLX_IntRange range);
+            return range;
+        }
+
+        public ADLX_IntRange GetTargetFanSpeedRange()
+        {
+            GetTargetFanSpeedRange(out ADLX_IntRange range);
+            return range;
+        }
+
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXManualFanTuning release started");
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXManualFanTuning released");
+
+            return release;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXManualFanTuningVtbl
+        {
+            public ADLXInterfaceVtbl adlxInterface;
+
+            public ADLXManualFanTuningDelegates.GetFanTuningRanges GetFanTuningRanges;
+            public ADLXManualFanTuningDelegates.GetFanTuningStates GetFanTuningStates;
+            public ADLXManualFanTuningDelegates.GetEmptyFanTuningStates GetEmptyFanTuningStates;
+            public ADLXManualFanTuningDelegates.IsValidFanTuningStates IsValidFanTuningStates;
+            public ADLXManualFanTuningDelegates.SetFanTuningStates SetFanTuningStates;
+            public ADLXManualFanTuningDelegates.IsSupportedZeroRPM IsSupportedZeroRPM;
+            public ADLXManualFanTuningDelegates.GetZeroRPMState GetZeroRPMState;
+            public ADLXManualFanTuningDelegates.SetZeroRPMState SetZeroRPMState;
+            public ADLXManualFanTuningDelegates.IsSupportedMinAcousticLimit IsSupportedMinAcousticLimit;
+            public ADLXManualFanTuningDelegates.GetMinAcousticLimitRange GetMinAcousticLimitRange;
+            public ADLXManualFanTuningDelegates.GetMinAcousticLimit GetMinAcousticLimit;
+            public ADLXManualFanTuningDelegates.SetMinAcousticLimit SetMinAcousticLimit;
+            public ADLXManualFanTuningDelegates.IsSupportedMinFanSpeed IsSupportedMinFanSpeed;
+            public ADLXManualFanTuningDelegates.GetMinFanSpeedRange GetMinFanSpeedRange;
+            public ADLXManualFanTuningDelegates.GetMinFanSpeed GetMinFanSpeed;
+            public ADLXManualFanTuningDelegates.SetMinFanSpeed SetMinFanSpeed;
+            public ADLXManualFanTuningDelegates.IsSupportedTargetFanSpeed IsSupportedTargetFanSpeed;
+            public ADLXManualFanTuningDelegates.GetTargetFanSpeedRange GetTargetFanSpeedRange;
+            public ADLXManualFanTuningDelegates.GetTargetFanSpeed GetTargetFanSpeed;
+            public ADLXManualFanTuningDelegates.SetTargetFanSpeed SetTargetFanSpeed;
+        }
+
+        protected static class ADLXManualFanTuningDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetFanTuningRanges(IntPtr iadlxManualFanTuning, out ADLX_IntRange speedRange, out ADLX_IntRange temperatureRange);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetFanTuningStates(IntPtr iadlxManualFanTuning, out IntPtr ppStates);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetEmptyFanTuningStates(IntPtr iadlxManualFanTuning, out IntPtr ppStates);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsValidFanTuningStates(IntPtr iadlxManualFanTuning, IntPtr pStates, out int errorIndex);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetFanTuningStates(IntPtr iadlxManualFanTuning, IntPtr pStates);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedZeroRPM(IntPtr iadlxManualFanTuning, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetZeroRPMState(IntPtr iadlxManualFanTuning, out bool isSet);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetZeroRPMState(IntPtr iadlxManualFanTuning, bool set);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedMinAcousticLimit(IntPtr iadlxManualFanTuning, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetMinAcousticLimitRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetMinAcousticLimit(IntPtr iadlxManualFanTuning, out int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetMinAcousticLimit(IntPtr iadlxManualFanTuning, int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedMinFanSpeed(IntPtr iadlxManualFanTuning, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetMinFanSpeedRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetMinFanSpeed(IntPtr iadlxManualFanTuning, out int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetMinFanSpeed(IntPtr iadlxManualFanTuning, int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult IsSupportedTargetFanSpeed(IntPtr iadlxManualFanTuning, out bool supported);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetTargetFanSpeedRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetTargetFanSpeed(IntPtr iadlxManualFanTuning, out int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetTargetFanSpeed(IntPtr iadlxManualFanTuning, int value);
+        }
+    }
+
+    /*************************************************************************
+        IADLXManualFanTuningStateList
+    *************************************************************************/
+    public interface IADLXManualFanTuningStateList : IADLXList
+    {
+        ADLXResult At_ManualFanTuningStateList(uint location, out IADLXManualFanTuningState ppItem);
+        ADLXResult Add_Back_ManualFanTuningStateList(IADLXManualFanTuningState ppItem);
+    }
+    private class ADLXManualFanTuningStateList : ADLXList, IADLXManualFanTuningStateList
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXManualFanTuningStateListVtbl vtbl;
+
+        internal ADLXManualFanTuningStateList(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult At_ManualFanTuningStateList(uint location, out IADLXManualFanTuningState ppItem)
+        {
+            ADLXResult status = vtbl.At_ManualFanTuningStateList(_ptr, location, out IntPtr ptr);
+
+            if (status == ADLXResult.ADLX_OK && ptr != IntPtr.Zero)
+            {
+                ppItem = new ADLXManualFanTuningState(ptr);
+                return ADLXResult.ADLX_OK;
+            }
+            else
+            {
+                ppItem = null;
+            }
+
+            return status;
+        }
+
+        public ADLXResult Add_Back_ManualFanTuningStateList(IADLXManualFanTuningState ppItem)
+        {
+            IntPtr ptrGpu = ppItem.ToPointer();
+
+            if (ptrGpu != IntPtr.Zero)
+            {
+                return vtbl.Add_Back_ManualFanTuningStateList(_ptr, ptrGpu);
+            }
+
+            return ADLXResult.ADLX_INVALID_ARGS;
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXManualFanTuningStateList release started");
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxList.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXManualFanTuningStateList released");
+
+            return release;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXManualFanTuningStateListVtbl
+        {
+            public ADLXListVtbl adlxList;
+
+            public ADLXManualFanTuningStateListDelegates.At_ManualFanTuningStateList At_ManualFanTuningStateList;
+            public ADLXManualFanTuningStateListDelegates.Add_Back_ManualFanTuningStateList Add_Back_ManualFanTuningStateList;
+        }
+        protected static class ADLXManualFanTuningStateListDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult At_ManualFanTuningStateList(IntPtr iadlxManualFanTuningStateList, uint location, out IntPtr ppItem);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult Add_Back_ManualFanTuningStateList(IntPtr iadlxManualFanTuningStateList, IntPtr pItem);
+        }
+    }
+
+    /*************************************************************************
+        IADLXManualFanTuningState
+    *************************************************************************/
+    public interface IADLXManualFanTuningState : IADLXInterface
+    {
+        ADLXResult GetFanSpeed(out int fanSpeed);
+        ADLXResult SetFanSpeed(int fanSpeed);
+        ADLXResult GetTemperature(out int temperature);
+        ADLXResult SetTemperature(int temperature);
+        int GetFanSpeed();
+        int GetTemperature();
+
+    }
+    private class ADLXManualFanTuningState : ADLXInterface, IADLXManualFanTuningState
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXManualFanTuningStateVtbl vtbl;
+
+        internal ADLXManualFanTuningState(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult GetFanSpeed(out int fanSpeed)
+        {
+            return vtbl.GetFanSpeed(_ptr, out fanSpeed);
+        }
+
+        public int GetFanSpeed()
+        {
+            GetFanSpeed(out int fanSpeed);
+            return fanSpeed;
+        }
+
+        public ADLXResult GetTemperature(out int temperature)
+        {
+            return vtbl.GetTemperature(_ptr, out temperature);
+        }
+
+        public int GetTemperature()
+        {
+            GetTemperature(out int temperature);
+            return temperature;
+        }
+
+        public ADLXResult SetFanSpeed(int fanSpeed)
+        {
+            return vtbl.SetFanSpeed(_ptr, fanSpeed);
+        }
+
+        public ADLXResult SetTemperature(int temperature)
+        {
+            return vtbl.SetTemperature(_ptr, temperature);
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXManualFanTuningState release started");
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXManualFanTuningState released");
+
+            return release;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXManualFanTuningStateVtbl
+        {
+            public ADLXInterfaceVtbl adlxInterface;
+
+            public ADLXManualFanTuningStateDelegates.GetFanSpeed GetFanSpeed;
+            public ADLXManualFanTuningStateDelegates.SetFanSpeed SetFanSpeed;
+            public ADLXManualFanTuningStateDelegates.GetTemperature GetTemperature;
+            public ADLXManualFanTuningStateDelegates.SetTemperature SetTemperature;
+        }
+
+        protected static class ADLXManualFanTuningStateDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetFanSpeed(IntPtr iadlxManualFanTuningState, out int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetFanSpeed(IntPtr iadlxManualFanTuningState, int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetTemperature(IntPtr iadlxManualFanTuningState, out int value);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult SetTemperature(IntPtr iadlxManualFanTuningState, int value);
+        }
+    }
+
+    /*************************************************************************
         Base class for all ADLX interfaces
     *************************************************************************/
     public interface IADLXInterface : IDisposable
@@ -1978,6 +2772,7 @@ public static class AmdAdlx
         IntPtr ToPointer();
         long Acquire();
         long Release();
+        ADLXResult QueryInterface(IntPtr pThis, string interfaceId, out IntPtr ppInterface);
     }
 
     protected class ADLXInterface : IADLXInterface
@@ -2006,6 +2801,11 @@ public static class AmdAdlx
             throw new NotImplementedException();
         }
 
+        public ADLXResult QueryInterface(IntPtr pThis, string interfaceId, out IntPtr ppInterface)
+        {
+            return vtbl.QueryInterface(pThis, interfaceId, out ppInterface);
+        }
+
         public void Dispose()
         {
             LogDebug("-ADLXInterface Dispose started");
@@ -2019,7 +2819,7 @@ public static class AmdAdlx
         {
             public ADLXInterfaceDelegates.Acquire Acquire;
             public ADLXInterfaceDelegates.Release Release;
-            public IntPtr QueryInterface;
+            public ADLXInterfaceDelegates.QueryInterface QueryInterface;
         }
 
         protected static class ADLXInterfaceDelegates
@@ -2029,6 +2829,9 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate long Release(IntPtr interfacePtr);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult QueryInterface(IntPtr interfacePtr, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
+
         }
     }
 
@@ -2038,6 +2841,11 @@ public static class AmdAdlx
         public int minValue;
         public int maxValue;
         public int step;
+
+        public override string ToString()
+        {
+            return "(minValue='" + minValue + "';maxValue='" + maxValue + "';step='" + step + "')";
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
