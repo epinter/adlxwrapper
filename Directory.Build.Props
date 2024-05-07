@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
         <UseArtifactsOutput>true</UseArtifactsOutput>
-        <Version>0.2.0-alpha</Version>
+        <Version>0.3.0-alpha</Version>
         <Copyright>Emerson Pinter</Copyright>
         <Authors>Emerson Pinter</Authors>
         <TargetFrameworks>net481;netstandard2.0;net7.0;net8.0</TargetFrameworks>
