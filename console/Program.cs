@@ -73,6 +73,9 @@ public class Program
                             {
                                 using (AmdAdlx.IADLXGPU adlxGpu = system.GetADLXGPUByUniqueId(gpu.UniqueId))
                                 {
+                                    adlxGpu.QueryInterface(out AmdAdlx.IADLXGPU1 adlxGpu1);
+                                    adlxGpu1.Dispose();
+
                                     gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool support);
                                     AmdAdlx.ADLXResult status = gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool supportedManualFanTuning);
 
@@ -123,6 +126,21 @@ public class Program
                 {
                     AmdAdlx.ADLXResult status = gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool supportedManualFanTuning);
                     Console.WriteLine("Manual Fan Tuning support = {0}; GPUName = '{1}'; ADLXResult = {2}", supportedManualFanTuning, adlxGpu.Name(), status);
+
+                    //QueryInterface test
+                    if (AmdAdlx.IsSucceeded(adlxGpu.QueryInterface(out AmdAdlx.IADLXGPU1 adlxGpu1)))
+                    {
+                        using (adlxGpu1)
+                        {
+                            Console.WriteLine("ADLXGPU1: Name='{0}'; ProductName:{1}; PCIBusLaneWidth:{2}; PCIBusType:{3}; MultiGPUMode:{4}; ",
+                                                adlxGpu1.Name(), adlxGpu1.ProductName(), adlxGpu1.PCIBusLaneWidth(), adlxGpu1.PCIBusType(), adlxGpu1.MultiGPUMode());
+                            Console.WriteLine("IADLXGPU pointer = {0}; Queried pointer = {1};", adlxGpu.ToPointer(), adlxGpu1.ToPointer());
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception("ADLXGPU1 query interface failed");
+                    }
                 }
             }
 

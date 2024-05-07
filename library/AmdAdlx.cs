@@ -377,7 +377,7 @@ public static class AmdAdlx
         {
             public IntPtr GetHybridGraphicsType;
             public ADLXSystemDelegates.GetGPUs GetGPUs;
-            public ADLXSystemDelegates.QueryInterface QueryInterface;
+            public IntPtr QueryInterface;
             public IntPtr GetDisplaysServices;
             public IntPtr GetDesktopsServices;
             public IntPtr GetGPUsChangedHandling;
@@ -396,9 +396,6 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetGPUs(IntPtr adlxSystem, out IntPtr gpus);
-
-            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-            public delegate ADLXResult QueryInterface(IntPtr adlxSystem, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetPerformanceMonitoringServices(IntPtr adlxSystem, out IntPtr gpus);
@@ -539,6 +536,129 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+       ADLXGPU1
+    *************************************************************************/
+    public interface IADLXGPU1 : IADLXGPU
+    {
+        ADLXResult PCIBusType(out PCIBusType busType);
+        ADLXResult PCIBusLaneWidth(out uint laneWidth);
+        ADLXResult MultiGPUMode(out MGpuMode mode);
+        ADLXResult ProductName(out string productName);
+
+        PCIBusType PCIBusType();
+        uint PCIBusLaneWidth();
+        MGpuMode MultiGPUMode();
+        string ProductName();
+    }
+
+    private class ADLXGPU1 : ADLXGPU, IADLXGPU1
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXGPU1Vtbl vtbl;
+
+        internal ADLXGPU1(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult MultiGPUMode(out MGpuMode mode)
+        {
+            ADLXResult status = vtbl.MultiGPUMode(_ptr, out int iMode);
+            mode = (MGpuMode)iMode;
+            return status;
+        }
+
+        public MGpuMode MultiGPUMode()
+        {
+            MultiGPUMode(out MGpuMode mode);
+            return mode;
+        }
+
+        public ADLXResult PCIBusLaneWidth(out uint laneWidth)
+        {
+            return vtbl.PCIBusLaneWidth(_ptr, out laneWidth);
+        }
+
+        public uint PCIBusLaneWidth()
+        {
+            PCIBusLaneWidth(out uint laneWidth);
+            return laneWidth;
+        }
+
+        public ADLXResult PCIBusType(out PCIBusType busType)
+        {
+            ADLXResult status = vtbl.PCIBusType(_ptr, out int iBus);
+            busType = (PCIBusType)iBus;
+            return status;
+        }
+
+        public PCIBusType PCIBusType()
+        {
+            PCIBusType(out PCIBusType busType);
+            return busType;
+        }
+
+        public ADLXResult ProductName(out string productName)
+        {
+            ADLXResult status = vtbl.ProductName(_ptr, out IntPtr namePtr);
+            productName = Marshal.PtrToStringAnsi(namePtr);
+            return status;
+        }
+
+        public string ProductName()
+        {
+            ProductName(out string productName);
+            return productName;
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXGPU1 release started");
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxGpu.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXGPU1 released");
+
+            return release;
+        }
+
+
+        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem1.h
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXGPU1Vtbl
+        {
+            public ADLXGPUVtbl adlxGpu;
+
+            // //IADLXGPU1
+            public ADLXGPU1Delegates.PCIBusType PCIBusType;
+            public ADLXGPU1Delegates.PCIBusLaneWidth PCIBusLaneWidth;
+            public ADLXGPU1Delegates.MultiGPUMode MultiGPUMode;
+            public ADLXGPU1Delegates.ProductName ProductName;
+        }
+
+        protected static class ADLXGPU1Delegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult PCIBusType(IntPtr iadlxGPU1, out int busType);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult PCIBusLaneWidth(IntPtr iadlxGPU1, out uint laneWidth);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult MultiGPUMode(IntPtr iadlxGPU1, out int mode);
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult ProductName(IntPtr iadlxGPU1, out IntPtr productName);
+        }
+    }
+
+
+    /*************************************************************************
        ADLXGPU
     *************************************************************************/
     public interface IADLXGPU : IADLXInterface
@@ -575,6 +695,8 @@ public static class AmdAdlx
         string SubSystemId();
         string SubSystemVendorId();
         int UniqueId();
+
+        ADLXResult QueryInterface(out IADLXGPU1 adlxGpu1);
     }
 
     private class ADLXGPU : ADLXInterface, IADLXGPU
@@ -586,6 +708,13 @@ public static class AmdAdlx
         {
             _ptr = ptr;
             GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult QueryInterface(out IADLXGPU1 adlxGpu1)
+        {
+            ADLXResult status = vtbl.adlxInterface.QueryInterface(_ptr, "IADLXGPU1", out IntPtr gpu1Ptr);
+            adlxGpu1 = IsSucceeded(status) ? new ADLXGPU1(gpu1Ptr) : null;
+            return status;
         }
 
         public ADLXResult Name(out string name)
@@ -1186,7 +1315,6 @@ public static class AmdAdlx
         public ADLXResult GetSamplingIntervalRange(out ADLX_IntRange range)
         {
             return vtbl.GetSamplingIntervalRange(_ptr, out range);
-
         }
 
         public ADLX_IntRange GetSamplingIntervalRange()
@@ -2061,7 +2189,6 @@ public static class AmdAdlx
         bool IsSupportedManualGFXTuning(int gpuUniqueId);
         bool IsSupportedManualVRAMTuning(int gpuUniqueId);
         bool IsSupportedManualPowerTuning(int gpuUniqueId);
-
     }
 
     private class ADLXGPUTuningServices : ADLXInterface, IADLXGPUTuningServices
@@ -2290,7 +2417,6 @@ public static class AmdAdlx
         ADLX_IntRange GetMinAcousticLimitRange();
         ADLX_IntRange GetMinFanSpeedRange();
         ADLX_IntRange GetTargetFanSpeedRange();
-
     }
 
     private class ADLXManualFanTuning : ADLXInterface, IADLXManualFanTuning
@@ -2677,8 +2803,8 @@ public static class AmdAdlx
         ADLXResult SetTemperature(int temperature);
         int GetFanSpeed();
         int GetTemperature();
-
     }
+
     private class ADLXManualFanTuningState : ADLXInterface, IADLXManualFanTuningState
     {
         private readonly IntPtr _ptr;
@@ -2772,7 +2898,6 @@ public static class AmdAdlx
         IntPtr ToPointer();
         long Acquire();
         long Release();
-        ADLXResult QueryInterface(IntPtr pThis, string interfaceId, out IntPtr ppInterface);
     }
 
     protected class ADLXInterface : IADLXInterface
@@ -2791,6 +2916,11 @@ public static class AmdAdlx
             return _ptr;
         }
 
+        /// <summary>
+        /// Acquire is not supported, it is handled automatically by C#-native interaction.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="NotSupportedException"></exception>
         public virtual long Acquire()
         {
             throw new NotSupportedException("Acquire is not supported.");
@@ -2799,11 +2929,6 @@ public static class AmdAdlx
         public virtual long Release()
         {
             throw new NotImplementedException();
-        }
-
-        public ADLXResult QueryInterface(IntPtr pThis, string interfaceId, out IntPtr ppInterface)
-        {
-            return vtbl.QueryInterface(pThis, interfaceId, out ppInterface);
         }
 
         public void Dispose()
@@ -2829,9 +2954,9 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate long Release(IntPtr interfacePtr);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult QueryInterface(IntPtr interfacePtr, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
-
         }
     }
 
@@ -2889,6 +3014,24 @@ public static class AmdAdlx
         GPUTYPE_UNDEFINED = 0,          /**< @ENG_START_DOX The GPU type is unknown. @ENG_END_DOX */
         GPUTYPE_INTEGRATED,             /**< @ENG_START_DOX The GPU type is an integrated GPU. @ENG_END_DOX */
         GPUTYPE_DISCRETE,               /**< @ENG_START_DOX The GPU type is a discrete GPU. @ENG_END_DOX */
+    }
+
+    public enum PCIBusType
+    {
+        UNDEFINED = 0,              /**< @ENG_START_DOX The PCI bus type is not defined. @ENG_END_DOX */
+        PCI,                        /**< @ENG_START_DOX The PCI bus type is PCI bus. @ENG_END_DOX */
+        AGP,                        /**< @ENG_START_DOX The PCI bus type is AGP bus. @ENG_END_DOX */
+        PCIE,                       /**< @ENG_START_DOX The PCI bus type is PCI Express bus. @ENG_END_DOX */
+        PCIE_2_0,                   /**< @ENG_START_DOX The PCI bus type is PCI Express 2nd generation bus. @ENG_END_DOX */
+        PCIE_3_0,                   /**< @ENG_START_DOX The PCI bus type is PCI Express 3rd generation bus. @ENG_END_DOX */
+        PCIE_4_0                    /**< @ENG_START_DOX The PCI bus type is PCI Express 4th generation bus. @ENG_END_DOX */
+    }
+
+    public enum MGpuMode
+    {
+        MGPU_NONE = 0,                     /**< @ENG_START_DOX The GPU is not part of an AMD MGPU configuration. @ENG_END_DOX */
+        MGPU_PRIMARY,                      /**< @ENG_START_DOX The GPU is the primary GPU in an AMD MGPU configuration. @ENG_END_DOX */
+        MGPU_SECONDARY,                    /**< @ENG_START_DOX The GPU is the secondary GPU in an AMD MGPU configuration. @ENG_END_DOX */
     }
 
     public struct BIOSInfo
