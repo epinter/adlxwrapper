@@ -297,12 +297,13 @@ public class Program
         }
         finally
         {
-            if (adlContext != IntPtr.Zero)
+            Console.WriteLine("Closing ADLX");
+            AmdAdlx.Terminate();
+
+            if (!noAdl && adlContext != IntPtr.Zero)
                 AtiAdlxx.ADL2_Main_Control_Destroy(adlContext);
         }
 
-        Console.WriteLine("Closing ADLX");
-        AmdAdlx.Terminate();
     }
 
     private static bool InitializeAdl(out IntPtr adlContext)
