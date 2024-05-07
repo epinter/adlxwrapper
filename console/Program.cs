@@ -134,7 +134,7 @@ public class Program
                         {
                             Console.WriteLine("ADLXGPU1: Name='{0}'; ProductName:{1}; PCIBusLaneWidth:{2}; PCIBusType:{3}; MultiGPUMode:{4}; ",
                                                 adlxGpu1.Name(), adlxGpu1.ProductName(), adlxGpu1.PCIBusLaneWidth(), adlxGpu1.PCIBusType(), adlxGpu1.MultiGPUMode());
-                            Console.WriteLine("IADLXGPU pointer = {0}; Queried pointer = {1};", adlxGpu.ToPointer(), adlxGpu1.ToPointer());
+                            Console.WriteLine("IADLXGPU pointer = 0x{0:X}; Queried pointer = 0x{1:X};", adlxGpu.ToPointer(), adlxGpu1.ToPointer());
                         }
                     }
                     else

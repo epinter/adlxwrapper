@@ -72,6 +72,7 @@ public static class AmdAdlx
 
     public static ADLXResult Terminate()
     {
+        ADLXResult status = ADLXTerminate();
         adlxSystemStructPtr = IntPtr.Zero;
         adlMappingStructPtr = IntPtr.Zero;
         systemInstance = null;
@@ -80,7 +81,7 @@ public static class AmdAdlx
         adlxInitialized = false;
         mappingAdl = false;
         _logger = null;
-        return ADLXTerminate();
+        return status;
     }
 
     public static bool IsAdlxInitialized()
@@ -125,10 +126,10 @@ public static class AmdAdlx
 
     public static void Main_Memory_Free(ref IntPtr buffer)
     {
-        LogDebug("----Main_Memory_Free: buffer-address={0}", buffer);
+        LogDebug("----Main_Memory_Free: buffer-address=0x{0:X}", buffer);
         if (buffer != IntPtr.Zero)
             Marshal.FreeHGlobal(buffer);
-        LogDebug("----Main_Memory_Free: freed buffer-address={0}", buffer);
+        LogDebug("----Main_Memory_Free: freed buffer-address=0x{0:X}", buffer);
     }
 
     private static void GetVtblPointer<T>(IntPtr interfacePtr, out T vtblStruct) where T : struct
@@ -619,13 +620,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPU1 release started");
+            LogDebug("+ADLXGPU1 release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxGpu.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPU1 released");
+            LogDebug("+ADLXGPU1 released (count={0})", release);
 
             return release;
         }
@@ -934,13 +935,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPU release started");
+            LogDebug("+ADLXGPU release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPU released");
+            LogDebug("+ADLXGPU released (count={0})", release);
 
             return release;
         }
@@ -1078,13 +1079,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPUList release started");
+            LogDebug("+ADLXGPUList release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxList.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPUList released");
+            LogDebug("+ADLXGPUList released (count={0})", release);
 
             return release;
         }
@@ -1346,13 +1347,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXPerformanceMonitoringServices release started");
+            LogDebug("+ADLXPerformanceMonitoringServices release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXPerformanceMonitoringServices released");
+            LogDebug("+ADLXPerformanceMonitoringServices released (count={0})", release);
 
             return release;
         }
@@ -1721,13 +1722,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPUMetricsSupport release started");
+            LogDebug("+ADLXGPUMetricsSupport release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPUMetricsSupport released");
+            LogDebug("+ADLXGPUMetricsSupport released (count={0})", release);
 
             return release;
         }
@@ -2013,13 +2014,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPUMetrics release started");
+            LogDebug("+ADLXGPUMetrics release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPUMetrics released");
+            LogDebug("+ADLXGPUMetrics released (count={0})", release);
 
             return release;
         }
@@ -2137,13 +2138,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXFPS release started");
+            LogDebug("+ADLXFPS release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXFPS released");
+            LogDebug("+ADLXFPS released (count={0})", release);
 
             return release;
         }
@@ -2299,13 +2300,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXGPUTuningServices release started");
+            LogDebug("+ADLXGPUTuningServices release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXGPUTuningServices released");
+            LogDebug("+ADLXGPUTuningServices released (count={0})", release);
 
             return release;
         }
@@ -2626,13 +2627,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXManualFanTuning release started");
+            LogDebug("+ADLXManualFanTuning release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXManualFanTuning released");
+            LogDebug("+ADLXManualFanTuning released (count={0})", release);
 
             return release;
         }
@@ -2764,13 +2765,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXManualFanTuningStateList release started");
+            LogDebug("+ADLXManualFanTuningStateList release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxList.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXManualFanTuningStateList released");
+            LogDebug("+ADLXManualFanTuningStateList released (count={0})", release);
 
             return release;
         }
@@ -2855,13 +2856,13 @@ public static class AmdAdlx
 
         public override long Release()
         {
-            LogDebug("+ADLXManualFanTuningState release started");
+            LogDebug("+ADLXManualFanTuningState release started ptr=(0x{0:X})", _ptr);
             long release = 0;
             if (_ptr != IntPtr.Zero)
             {
                 release = vtbl.adlxInterface.Release(_ptr);
             }
-            LogDebug("+ADLXManualFanTuningState released");
+            LogDebug("+ADLXManualFanTuningState released (count={0})", release);
 
             return release;
         }
