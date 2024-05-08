@@ -176,15 +176,35 @@ public static class AmdAdlx
         vtblStruct = (T)Marshal.PtrToStructure(iadlxPtr.ptr, typeof(T));
     }
 
+    private static void Log(LogLevel level, string message, params object[] args)
+    {
+        _logger?.Log(level, message, args);
+    }
+
+    private static void LogError(string message, params object[] args)
+    {
+        Log(LogLevel.Error, message, args);
+    }
+
+    private static void LogWarn(string message, params object[] args)
+    {
+        Log(LogLevel.Warning, message, args);
+    }
+
+    private static void LogInfo(string message, params object[] args)
+    {
+        Log(LogLevel.Information, message, args);
+    }
+
     private static void LogDebug(string message, params object[] args)
     {
-#pragma warning disable CA2254 // Template should be a static expression
-        _logger?.LogDebug(message, args);
-#pragma warning restore CA2254 // Template should be a static expression
+        Log(LogLevel.Debug, message, args);
     }
 
     /*************************************************************************
+     ************************************************************************
        ADLMapping, class to map information between ADL and ADLX
+     ************************************************************************
     *************************************************************************/
     public interface IADLMapping
     {
@@ -283,7 +303,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
        ADLXSystem, main interface of ADLX library
+     ************************************************************************
     *************************************************************************/
     public interface IADLXSystem
     {
@@ -307,6 +329,9 @@ public static class AmdAdlx
         /// </summary>
         IADLXGPUTuningServices GetGPUTuningServices();
 
+        /// <summary>
+        /// Gets an ADLXGPU instance by its UniqueId
+        /// </summary>
         IADLXGPU GetADLXGPUByUniqueId(int uniqueId);
 
         /// <inheritdoc cref="TotalSystemRAM"/>
@@ -314,6 +339,11 @@ public static class AmdAdlx
 
         /// <inheritdoc cref="GetGPUs"/>
         List<GPU> GetGPUList();
+
+        /// <summary>
+        /// Enables logging in ADLX.
+        /// </summary>
+        ADLXResult EnableLog(LogDestination mode, LogSeverity severity, out IADLXLog adlxLogger, string fileName);
     }
 
     private class ADLXSystem : IADLXSystem
@@ -438,6 +468,14 @@ public static class AmdAdlx
             return status == ADLXResult.ADLX_OK ? new ADLXGPUTuningServices(gpuTuningServices) : null;
         }
 
+        public ADLXResult EnableLog(LogDestination mode, LogSeverity severity, out IADLXLog adlxLogger, string fileName)
+        {
+            adlxLogger = new ADLXLog(mode, severity, fileName);
+            IntPtr adlxLoggerPtr = adlxLogger.ToPointer();
+            LogInfo("Enabling ADLXLog mode={0};severity={1};fileName={2};", mode, severity, fileName);
+            return vtbl.EnableLog(_ptr, (int)mode, (int)severity, adlxLoggerPtr, fileName);
+        }
+
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXSystemVtbl
@@ -448,7 +486,7 @@ public static class AmdAdlx
             public IntPtr GetDisplaysServices;
             public IntPtr GetDesktopsServices;
             public IntPtr GetGPUsChangedHandling;
-            public IntPtr EnableLog;
+            public ADLXSystemDelegates.EnableLog EnableLog;
             public IntPtr Get3DSettingsServices;
             public ADLXSystemDelegates.GetGPUTuningServices GetGPUTuningServices;
             public ADLXSystemDelegates.GetPerformanceMonitoringServices GetPerformanceMonitoringServices;
@@ -469,11 +507,16 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetGPUTuningServices(IntPtr iadlxSystem, out IntPtr ppGPUTuningServices);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult EnableLog(IntPtr iadlxSystem, int mode, int severity, IntPtr pLogger, [MarshalAs(UnmanagedType.LPWStr)] string fileName);
         }
     }
 
     /*************************************************************************
+     ************************************************************************
        Abstract class for lists
+     ************************************************************************ 
     *************************************************************************/
     public interface IADLXList : IADLXInterface
     {
@@ -603,7 +646,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
        ADLXGPU1
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPU1 : IADLXGPU
     {
@@ -697,7 +742,6 @@ public static class AmdAdlx
             return release;
         }
 
-
         // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem1.h
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPU1Vtbl
@@ -726,7 +770,9 @@ public static class AmdAdlx
 
 
     /*************************************************************************
+     ************************************************************************
        ADLXGPU
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPU : IADLXInterface
     {
@@ -1095,7 +1141,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         ADLXGPUList
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPUList : IADLXList
     {
@@ -1182,7 +1230,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         ADLXPerformanceMonitoringServices
+     ************************************************************************
     *************************************************************************/
     public interface IADLXPerformanceMonitoringServices : IADLXInterface
     {
@@ -1535,7 +1585,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         ADLXGPUMetricsSupport
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPUMetricsSupport : IADLXInterface
     {
@@ -1957,7 +2009,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         ADLXGPUMetrics
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPUMetrics : IADLXInterface
     {
@@ -2209,7 +2263,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         ADLXFPS
+     ************************************************************************
     *************************************************************************/
     public interface IADLXFPS : IADLXInterface
     {
@@ -2293,7 +2349,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         IADLXGPUTuningServices
+     ************************************************************************
     *************************************************************************/
     public interface IADLXGPUTuningServices : IADLXInterface
     {
@@ -2502,7 +2560,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         IADLXManualFanTuning
+     ************************************************************************
     *************************************************************************/
     public interface IADLXManualFanTuning : IADLXInterface
     {
@@ -2834,7 +2894,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         IADLXManualFanTuningStateList
+     ************************************************************************
     *************************************************************************/
     public interface IADLXManualFanTuningStateList : IADLXList
     {
@@ -2917,7 +2979,9 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
         IADLXManualFanTuningState
+     ************************************************************************
     *************************************************************************/
     public interface IADLXManualFanTuningState : IADLXInterface
     {
@@ -3015,7 +3079,79 @@ public static class AmdAdlx
     }
 
     /*************************************************************************
+     ************************************************************************
+        IADLXLog
+     ************************************************************************
+    *************************************************************************/
+    public interface IADLXLog : IDisposable
+    {
+        IntPtr ToPointer();
+    }
+
+    public class ADLXLog : IADLXLog
+    {
+        private readonly ADLXLogVtbl vtbl = new();
+        private readonly ADLXVtblPtr vtblPtr = new();
+        private readonly IntPtr ptrToVtblPtr;
+        private readonly LogDestination _logDestination;
+        private readonly LogSeverity _logSeverity;
+        private readonly string _fileName;
+
+        internal ADLXLog(LogDestination mode, LogSeverity severity, string fileName)
+        {
+            _logDestination = mode;
+            _logSeverity = severity;
+            _fileName = fileName;
+            vtbl.WriteLog = WriteLog;
+            vtblPtr.ptr = Marshal.AllocHGlobal(Marshal.SizeOf(vtbl));
+            Marshal.StructureToPtr(vtbl, vtblPtr.ptr, true); //ADLXLogVtbl to vtblptr
+            ptrToVtblPtr = Marshal.AllocHGlobal(Marshal.SizeOf(vtblPtr));
+            Marshal.StructureToPtr(vtblPtr, ptrToVtblPtr, true);
+        }
+
+        public void Dispose()
+        {
+            LogDebug("-ADLXLog Dispose started");
+            LogDebug("Deallocating ADLXLogVtbl");
+            Marshal.FreeHGlobal(vtblPtr.ptr);
+            LogDebug("Deallocating ADLXVtblPtr");
+            Marshal.FreeHGlobal(ptrToVtblPtr);
+            LogDebug("-ADLXLog Dispose finished");
+        }
+
+        public IntPtr ToPointer()
+        {
+            return ptrToVtblPtr;
+        }
+
+        public ADLXResult WriteLog(IntPtr adlxLogPtr, [MarshalAs(UnmanagedType.LPWStr)] string msg)
+        {
+            if (_logSeverity == LogSeverity.LDEBUG)
+                LogDebug("[ADLXLog]: {0}", msg);
+            if (_logSeverity == LogSeverity.LWARNING)
+                LogWarn("[ADLXLog]: {0}", msg);
+            if (_logSeverity == LogSeverity.LERROR)
+                LogError("[ADLXLog]: {0}", msg);
+            return ADLXResult.ADLX_OK;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXLogVtbl
+        {
+            public ADLXLogDelegates.WriteLog WriteLog;
+        }
+
+        protected static class ADLXLogDelegates
+        {
+            public delegate ADLXResult WriteLog(IntPtr adlxLog, [MarshalAs(UnmanagedType.LPWStr)] string msg);
+        }
+    }
+
+
+    /*************************************************************************
+     ************************************************************************
         Base class for all ADLX interfaces
+     ************************************************************************
     *************************************************************************/
     public interface IADLXInterface : IDisposable
     {
@@ -3083,6 +3219,14 @@ public static class AmdAdlx
             public delegate ADLXResult QueryInterface(IntPtr interfacePtr, [MarshalAs(UnmanagedType.LPWStr)] string interfaceId, out IntPtr ppInterface);
         }
     }
+
+    /*************************************************************************
+    **************************************************************************
+    **************************************************************************
+        Structs and Enums
+    **************************************************************************
+    **************************************************************************
+    *************************************************************************/
 
     [StructLayout(LayoutKind.Sequential)]
     public struct ADLX_IntRange
@@ -3168,6 +3312,20 @@ public static class AmdAdlx
         {
             return "(partNumber='" + partNumber + "';version='" + version + "';date='" + date + "')";
         }
+    }
+
+    public enum LogDestination
+    {
+        LOCALFILE = 0,      /**< @ENG_START_DOX The log destination is a file. @ENG_END_DOX */
+        DBGVIEW,            /**< @ENG_START_DOX The log destination is the application debugger. @ENG_END_DOX */
+        APPLICATION,        /**< @ENG_START_DOX The log destination is the application. @ENG_END_DOX */
+    }
+
+    public enum LogSeverity
+    {
+        LDEBUG = 0,      /**< @ENG_START_DOX The log captures errors, warnings and debug information. @ENG_END_DOX */
+        LWARNING,        /**< @ENG_START_DOX The log captures errors and warnings. @ENG_END_DOX */
+        LERROR,          /**< @ENG_START_DOX The log captures errors. @ENG_END_DOX */
     }
 
     /**************************************************************************/

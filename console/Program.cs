@@ -9,6 +9,10 @@ using Microsoft.Extensions.Logging;
 public class Program
 {
     private static ILogger _logger = null;
+    private static AmdAdlx.IADLXLog adlxLogger = null;
+    private static IntPtr adlContext = IntPtr.Zero;
+    private static bool breakLoop = false;
+
     public static void Main(string[] args)
     {
         bool loop = args.Contains("loop"); // runs test loop
@@ -17,10 +21,16 @@ public class Program
         bool noFps = args.Contains("nofps"); // skip fps counter
         bool setrpm = args.Contains("setrpm"); // set fan rpm
 
-        if (debug && !loop)
-            _logger = CreateLogger();
+        _logger = CreateLogger(debug && !loop);
 
-        IntPtr adlContext = IntPtr.Zero;
+
+        Console.CancelKeyPress += delegate
+        {
+            breakLoop = true;
+            Thread.Sleep(1000);
+            Close();
+        };
+
         try
         {
             if (!noAdl && InitializeAdl(out adlContext))
@@ -38,6 +48,12 @@ public class Program
 
             AmdAdlx.IADLXSystem system = AmdAdlx.GetSystemServices();
 
+            AmdAdlx.ADLXResult logStatus = system.EnableLog(AmdAdlx.LogDestination.APPLICATION, debug ? AmdAdlx.LogSeverity.LDEBUG : AmdAdlx.LogSeverity.LERROR, out adlxLogger, null);
+            if (AmdAdlx.IsSucceeded(logStatus))
+                Console.WriteLine("ADLXLog enabled");
+            else
+                Console.Error.WriteLine("ADLXLog not enabled, status = '{0}'", logStatus);
+
             if (loop)
             {
                 // a loop to test memory management, run and monitor ram usage
@@ -53,6 +69,13 @@ public class Program
                         last = DateTime.Now;
                         accFpsTime = TimeSpan.Zero;
                     }
+
+                    if (breakLoop)
+                    {
+                        Console.Error.WriteLine("Exiting loop");
+                        break;
+                    }
+
 
                     uint r = system.GetTotalSystemRAM();
                     List<AmdAdlx.GPU> gpuList2 = system.GetGPUList();
@@ -108,6 +131,7 @@ public class Program
                         }
                     }
                 }
+                return;
             }
 
             uint ram = system.GetTotalSystemRAM();
@@ -297,13 +321,21 @@ public class Program
         }
         finally
         {
-            Console.WriteLine("Closing ADLX");
-            AmdAdlx.Terminate();
-
-            if (!noAdl && adlContext != IntPtr.Zero)
-                AtiAdlxx.ADL2_Main_Control_Destroy(adlContext);
+            Close();
         }
+    }
 
+    private static void Close()
+    {
+        breakLoop = true;
+        Console.WriteLine("Closing ADLX");
+        AmdAdlx.ADLXResult exitStatus = AmdAdlx.Terminate();
+        adlxLogger?.Dispose();
+
+        if (adlContext != IntPtr.Zero)
+            AtiAdlxx.ADL2_Main_Control_Destroy(adlContext);
+        if (exitStatus != AmdAdlx.ADLXResult.ADLX_OK)
+            Console.Error.WriteLine("ADLX terminated with error: '{0}'", (AmdAdlx.ADLXResult)exitStatus);
     }
 
     private static bool InitializeAdl(out IntPtr adlContext)
@@ -346,7 +378,7 @@ public class Program
         }
     }
 
-    public static ILogger CreateLogger()
+    public static ILogger CreateLogger(bool debug)
     {
         using ILoggerFactory factory = LoggerFactory.Create(builder =>
             builder
@@ -356,7 +388,7 @@ public class Program
                                                 options.SingleLine = true;
                                                 options.TimestampFormat = "[MMM dd HH:mm:ss] ";
                                             })
-                .AddFilter(nameof(AmdAdlx), LogLevel.Debug)
+                .AddFilter(nameof(AmdAdlx), debug ? LogLevel.Debug : LogLevel.Information)
                 .AddConsole()
                 .AddDebug()
                 );
