@@ -49,14 +49,21 @@ public static class AmdAdlx
     /// </summary>
     /// <param name="logger">Optional logger. See Microsoft.Extensions.Logging</param>
     /// <returns>ADLXResult</returns>
-    public static void Initialize(ILogger logger = null)
+    public static ADLXResult Initialize(ILogger logger = null)
     {
         _logger = logger;
-        ADLXQueryFullVersion(ref adlxFullVersion);
-        if (ADLXInitialize(ref adlxFullVersion, out adlxSystemStructPtr) == ADLXResult.ADLX_OK)
+        ADLXResult versionStatus = ADLXQueryFullVersion(ref adlxFullVersion);
+        if (IsFailed(versionStatus))
+        {
+            return versionStatus;
+        }
+
+        ADLXResult status = ADLXInitialize(ref adlxFullVersion, out adlxSystemStructPtr);
+        if (IsSucceeded(status))
         {
             adlxInitialized = true;
         }
+        return status;
     }
 
     /// <summary>
@@ -65,12 +72,17 @@ public static class AmdAdlx
     /// <param name="adlContext">ADL context</param>
     /// <param name="logger">Optional logger. See Microsoft.Extensions.Logging</param>
     /// <returns>ADLXResult</returns>
-    public static void InitializeFromAdl(IntPtr adlContext, ILogger logger = null)
+    public static ADLXResult InitializeFromAdl(IntPtr adlContext, ILogger logger = null)
     {
         _logger = logger;
-        ADLXQueryFullVersion(ref adlxFullVersion);
-        ADLXResult status;
-        if ((status = ADLXInitializeWithCallerAdl(ref adlxFullVersion, out adlxSystemStructPtr, out adlMappingStructPtr, adlContext, Main_Memory_Free_Delegate)) == ADLXResult.ADLX_OK)
+        ADLXResult versionStatus = ADLXQueryFullVersion(ref adlxFullVersion);
+        if (IsFailed(versionStatus))
+        {
+            return versionStatus;
+        }
+
+        ADLXResult status = ADLXInitializeWithCallerAdl(ref adlxFullVersion, out adlxSystemStructPtr, out adlMappingStructPtr, adlContext, Main_Memory_Free_Delegate);
+        if (IsSucceeded(status))
         {
             adlxInitialized = true;
             mappingAdl = true;
@@ -79,6 +91,7 @@ public static class AmdAdlx
         {
             LogDebug("ADLX initialization status = {0}", status);
         }
+        return status;
     }
 
     /// <summary>
@@ -149,7 +162,7 @@ public static class AmdAdlx
         return mappingInstance;
     }
 
-    public static void Main_Memory_Free(ref IntPtr buffer)
+    private static void Main_Memory_Free(ref IntPtr buffer)
     {
         LogDebug("----Main_Memory_Free: buffer-address=0x{0:X}", buffer);
         if (buffer != IntPtr.Zero)
