@@ -44,6 +44,11 @@ public static class AmdAdlx
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern ADLXResult ADLXTerminate();
 
+    /// <summary>
+    /// Initialize ADLX
+    /// </summary>
+    /// <param name="logger">Optional logger. See Microsoft.Extensions.Logging</param>
+    /// <returns>ADLXResult</returns>
     public static void Initialize(ILogger logger = null)
     {
         _logger = logger;
@@ -54,6 +59,12 @@ public static class AmdAdlx
         }
     }
 
+    /// <summary>
+    /// Initialize ADLX using ADL context.
+    /// </summary>
+    /// <param name="adlContext">ADL context</param>
+    /// <param name="logger">Optional logger. See Microsoft.Extensions.Logging</param>
+    /// <returns>ADLXResult</returns>
     public static void InitializeFromAdl(IntPtr adlContext, ILogger logger = null)
     {
         _logger = logger;
@@ -70,6 +81,10 @@ public static class AmdAdlx
         }
     }
 
+    /// <summary>
+    /// ADLXTerminate
+    /// </summary>
+    /// <returns>ADLXResult</returns>
     public static ADLXResult Terminate()
     {
         ADLXResult status = ADLXTerminate();
@@ -104,6 +119,11 @@ public static class AmdAdlx
         return !IsSucceeded(result);
     }
 
+    /// <summary>
+    /// ADLXSystem interface, use to access all other interfaces
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public static IADLXSystem GetSystemServices()
     {
         if (!adlxInitialized)
@@ -114,6 +134,11 @@ public static class AmdAdlx
         return systemInstance;
     }
 
+    /// <summary>
+    /// Access ADL mapping methods.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public static IADLMapping GetAdlMapping()
     {
         if (!adlxInitialized || !mappingAdl)
@@ -150,7 +175,15 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLMapping
     {
+        /// <summary>
+        /// Gets the IADLXGPU interface corresponding to the GPU with the specified ADL adapter index.
+        /// </summary>
+        /// <param name="adlAdapterIndex"></param>
+        /// <param name="adlxGpu"></param>
+        /// <returns></returns>
         ADLXResult GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex, out IADLXGPU adlxGpu);
+
+        /// <inheritdoc cref="GetADLXGPUFromAdlAdapterIndex"/>
         GPU GetADLXGPUFromAdlAdapterIndex(int adlAdapterIndex);
     }
 
@@ -241,12 +274,32 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXSystem
     {
+        /// <summary>
+        /// Gets the size of the total RAM on this system.
+        /// </summary>
         ADLXResult TotalSystemRAM(out uint ramMB);
+
+        /// <summary>
+        /// Gets the list of AMD GPUs.
+        /// </summary>
         IADLXGPUList GetGPUs();
+
+        /// <summary>
+        /// Gets the main interface to the "Performance Monitoring" domain.
+        /// </summary>
         IADLXPerformanceMonitoringServices GetPerformanceMonitoringServices();
+
+        /// <summary>
+        /// Gets the main interface to the "GPU Tuning" domain.
+        /// </summary>
         IADLXGPUTuningServices GetGPUTuningServices();
+
         IADLXGPU GetADLXGPUByUniqueId(int uniqueId);
+
+        /// <inheritdoc cref="TotalSystemRAM"/>
         uint GetTotalSystemRAM();
+
+        /// <inheritdoc cref="GetGPUs"/>
         List<GPU> GetGPUList();
     }
 
@@ -697,6 +750,11 @@ public static class AmdAdlx
         string SubSystemVendorId();
         int UniqueId();
 
+        /// <summary>
+        /// Get a IADLXGPU1 instance. The Dispose() must be called to free the pointer, or use 'using' on the instance.
+        /// </summary>
+        /// <param name="adlxGpu1">IADLXGPU1 instance</param>
+        /// <returns>ADLXResult</returns>
         ADLXResult QueryInterface(out IADLXGPU1 adlxGpu1);
     }
 
@@ -1115,19 +1173,71 @@ public static class AmdAdlx
     *************************************************************************/
     public interface IADLXPerformanceMonitoringServices : IADLXInterface
     {
+        /// <summary>
+        /// Gets the sampling interval for performance monitoring.
+        /// </summary>
         ADLXResult GetSamplingInterval(out int intervalMs);
+
+        /// <summary>
+        /// Sets the sampling interval for the performance monitoring.
+        /// </summary>
         ADLXResult SetSamplingInterval(int intervalMs);
+
+        /// <summary>
+        /// Gets the interface for discovering what performance metrics are supported on a GPU.
+        /// </summary>
+        /// <param name="adlxGpu">IADLXGPU instance</param>
+        /// <param name="ppMetricsSupported">IADLXGPUMetricsSupport instance</param>
         ADLXResult GetSupportedGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetricsSupport ppMetricsSupported);
+
+        /// <summary>
+        /// Gets the interface for the current metric set of a GPU.
+        /// </summary>
         ADLXResult GetCurrentGPUMetrics(IADLXGPU adlxGpu, out IADLXGPUMetrics ppMetrics);
+
+        /// <summary>
+        /// Gets the interface for the current FPS metric.
+        /// </summary>
         ADLXResult GetCurrentFPS(out IADLXFPS ppMetrics);
+
+        /// <summary>
+        /// Gets the maximum sampling interval, minimum sampling interval, and step sampling interval for the performance monitoring.
+        /// </summary>
         ADLXResult GetSamplingIntervalRange(out ADLX_IntRange range);
+
+        /// <inheritdoc cref="GetSamplingInterval"/>
         int GetSamplingInterval();
+
+        /// <inheritdoc cref="GetSupportedGPUMetrics"/>
         IADLXGPUMetricsSupport GetSupportedGPUMetrics(IADLXGPU gpadlxGpuu);
+
+        /// <inheritdoc cref="GetCurrentGPUMetrics"/>
         IADLXGPUMetrics GetCurrentGPUMetrics(IADLXGPU adlxGpu);
+
+        /// <inheritdoc cref="GetCurrentFPS"/>
         IADLXFPS GetCurrentFPS();
+
+        /// <inheritdoc cref="GetSamplingIntervalRange"/>
         ADLX_IntRange GetSamplingIntervalRange();
+
+        /// <summary>
+        /// Get the FPS
+        /// </summary>
         int CurrentFPS();
+
+        /// <summary>
+        /// Gets an object with the metric types that are supported by the gpu.
+        /// </summary>
+        /// <param name="uniqueId">GPU UniqueId</param>
+        /// <returns>SupportedGPUMetrics</returns>
         SupportedGPUMetrics GetSupportedGPUMetricsForUniqueId(int uniqueId);
+
+
+        /// <summary>
+        /// Gets an object with the current metric set of a GPU.
+        /// </summary>
+        /// <param name="uniqueId">GPU UniqueId</param>
+        /// <returns>GPUMetrics</returns>
         GPUMetrics GetCurrentGPUMetricsForUniqueId(int uniqueId);
     }
 
