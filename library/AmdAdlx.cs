@@ -273,7 +273,9 @@ public static class AmdAdlx
             return gpu;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLMappingVtbl
         {
@@ -476,7 +478,9 @@ public static class AmdAdlx
             return vtbl.EnableLog(_ptr, (int)mode, (int)severity, adlxLoggerPtr, fileName);
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXSystemVtbl
         {
@@ -516,7 +520,7 @@ public static class AmdAdlx
     /*************************************************************************
      ************************************************************************
        Abstract class for lists
-     ************************************************************************ 
+     ************************************************************************
     *************************************************************************/
     public interface IADLXList : IADLXInterface
     {
@@ -600,7 +604,9 @@ public static class AmdAdlx
             return vtbl.Remove_Back(_ptr);
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ICollections.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ICollections.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXListVtbl
         {
@@ -742,7 +748,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem1.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem1.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPU1Vtbl
         {
@@ -759,15 +767,17 @@ public static class AmdAdlx
         {
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult PCIBusType(IntPtr iadlxGPU1, out int busType);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult PCIBusLaneWidth(IntPtr iadlxGPU1, out uint laneWidth);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult MultiGPUMode(IntPtr iadlxGPU1, out int mode);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult ProductName(IntPtr iadlxGPU1, out IntPtr productName);
         }
     }
-
 
     /*************************************************************************
      ************************************************************************
@@ -1063,7 +1073,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPUVtbl
         {
@@ -1209,7 +1221,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ISystem.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPUListVtbl
         {
@@ -1294,7 +1308,6 @@ public static class AmdAdlx
         /// <param name="uniqueId">GPU UniqueId</param>
         /// <returns>SupportedGPUMetrics</returns>
         SupportedGPUMetrics GetSupportedGPUMetricsForUniqueId(int uniqueId);
-
 
         /// <summary>
         /// Gets an object with the current metric set of a GPU.
@@ -1531,7 +1544,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXPerformanceMonitoringServicesVtbl
         {
@@ -1908,7 +1923,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPUMetricsSupportVtbl
         {
@@ -2202,7 +2219,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPUMetricsVtbl
         {
@@ -2328,7 +2347,9 @@ public static class AmdAdlx
             return release;
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXFPSVtbl
         {
@@ -2502,6 +2523,9 @@ public static class AmdAdlx
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IGPUTuning.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXGPUTuningServicesVtbl
         {
@@ -2528,32 +2552,46 @@ public static class AmdAdlx
         {
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetGPUTuningChangedHandling(IntPtr iadlxGPUTuningServices, out IntPtr ppGPUTuningChangedHandling);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsAtFactory(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool isFactory);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult ResetToFactory(IntPtr iadlxGPUTuningServices, IntPtr pGPU);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedAutoTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedPresetTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedManualGFXTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedManualVRAMTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedManualFanTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedManualPowerTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetAutoTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppAutoTuning);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetPresetTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppPresetTuning);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetManualGFXTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualGFXTuning);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetManualVRAMTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualVRAMTuning);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetManualFanTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualFanTuning);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetManualPowerTuning(IntPtr iadlxGPUTuningServices, IntPtr pGPU, out IntPtr ppManualPowerTuning);
         }
@@ -2802,7 +2840,6 @@ public static class AmdAdlx
             return range;
         }
 
-
         public new IntPtr ToPointer()
         {
             return _ptr;
@@ -2821,6 +2858,9 @@ public static class AmdAdlx
             return release;
         }
 
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IGPUManualFanTuning.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXManualFanTuningVtbl
         {
@@ -2852,42 +2892,61 @@ public static class AmdAdlx
         {
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetFanTuningRanges(IntPtr iadlxManualFanTuning, out ADLX_IntRange speedRange, out ADLX_IntRange temperatureRange);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetFanTuningStates(IntPtr iadlxManualFanTuning, out IntPtr ppStates);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetEmptyFanTuningStates(IntPtr iadlxManualFanTuning, out IntPtr ppStates);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsValidFanTuningStates(IntPtr iadlxManualFanTuning, IntPtr pStates, out int errorIndex);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetFanTuningStates(IntPtr iadlxManualFanTuning, IntPtr pStates);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedZeroRPM(IntPtr iadlxManualFanTuning, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetZeroRPMState(IntPtr iadlxManualFanTuning, out bool isSet);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetZeroRPMState(IntPtr iadlxManualFanTuning, bool set);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedMinAcousticLimit(IntPtr iadlxManualFanTuning, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetMinAcousticLimitRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetMinAcousticLimit(IntPtr iadlxManualFanTuning, out int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetMinAcousticLimit(IntPtr iadlxManualFanTuning, int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedMinFanSpeed(IntPtr iadlxManualFanTuning, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetMinFanSpeedRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetMinFanSpeed(IntPtr iadlxManualFanTuning, out int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetMinFanSpeed(IntPtr iadlxManualFanTuning, int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult IsSupportedTargetFanSpeed(IntPtr iadlxManualFanTuning, out bool supported);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetTargetFanSpeedRange(IntPtr iadlxManualFanTuning, out ADLX_IntRange tuningRange);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetTargetFanSpeed(IntPtr iadlxManualFanTuning, out int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetTargetFanSpeed(IntPtr iadlxManualFanTuning, int value);
         }
@@ -2961,6 +3020,9 @@ public static class AmdAdlx
             return release;
         }
 
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IGPUManualFanTuning.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXManualFanTuningStateListVtbl
         {
@@ -2973,6 +3035,7 @@ public static class AmdAdlx
         {
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult At_ManualFanTuningStateList(IntPtr iadlxManualFanTuningStateList, uint location, out IntPtr ppItem);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult Add_Back_ManualFanTuningStateList(IntPtr iadlxManualFanTuningStateList, IntPtr pItem);
         }
@@ -3054,6 +3117,9 @@ public static class AmdAdlx
             return release;
         }
 
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IGPUManualFanTuning.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXManualFanTuningStateVtbl
         {
@@ -3069,10 +3135,13 @@ public static class AmdAdlx
         {
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetFanSpeed(IntPtr iadlxManualFanTuningState, out int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetFanSpeed(IntPtr iadlxManualFanTuningState, int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult GetTemperature(IntPtr iadlxManualFanTuningState, out int value);
+
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetTemperature(IntPtr iadlxManualFanTuningState, int value);
         }
@@ -3135,6 +3204,9 @@ public static class AmdAdlx
             return ADLXResult.ADLX_OK;
         }
 
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ILog.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXLogVtbl
         {
@@ -3146,7 +3218,6 @@ public static class AmdAdlx
             public delegate ADLXResult WriteLog(IntPtr adlxLog, [MarshalAs(UnmanagedType.LPWStr)] string msg);
         }
     }
-
 
     /*************************************************************************
      ************************************************************************
@@ -3198,7 +3269,9 @@ public static class AmdAdlx
             LogDebug("-ADLXInterface Dispose finished");
         }
 
-        // See https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ADLXDefines.h
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/ADLXDefines.h"/>
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         protected struct ADLXInterfaceVtbl
         {
