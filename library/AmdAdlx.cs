@@ -1313,8 +1313,18 @@ public static class AmdAdlx
         /// Gets an object with the current metric set of a GPU.
         /// </summary>
         /// <param name="uniqueId">GPU UniqueId</param>
+        /// <param name="supportedGPUMetrics">SupportedGPUMetrics</param>
         /// <returns>GPUMetrics</returns>
-        GPUMetrics GetCurrentGPUMetricsForUniqueId(int uniqueId);
+        GPUMetrics GetCurrentGPUMetricsForUniqueId(int uniqueId, SupportedGPUMetrics supportedGPUMetrics);
+
+        ADLXResult StartPerformanceMetricsTracking();
+        ADLXResult StopPerformanceMetricsTracking();
+        ADLXResult GetGPUMetricsHistory(IADLXGPU adlxGpu, int startMs, int stopMs, out IADLXGPUMetricsList gpuMetricsList);
+        IADLXGPUMetricsList GetGPUMetricsHistory(IADLXGPU adlxGpu, int startMs, int stopMs);
+        GPUMetrics GetHistoryGPUMetricsForUniqueId(int uniqueId, SupportedGPUMetrics supportedGPUMetrics);
+        ADLXResult ClearPerformanceMetricsHistory();
+        ADLXResult GetFPSHistory(int startMs, int stopMs, out IADLXFPSList FPSMetricsList);
+        IADLXFPSList GetFPSHistory(int startMs, int stopMs);
     }
 
     private class ADLXPerformanceMonitoringServices : ADLXInterface, IADLXPerformanceMonitoringServices
@@ -1340,7 +1350,7 @@ public static class AmdAdlx
             return fps;
         }
 
-        public GPUMetrics GetCurrentGPUMetricsForUniqueId(int uniqueId)
+        public GPUMetrics GetCurrentGPUMetricsForUniqueId(int uniqueId, SupportedGPUMetrics supportedGPUMetrics)
         {
             GPUMetrics gpuMetrics = [];
 
@@ -1355,22 +1365,65 @@ public static class AmdAdlx
                         {
                             if (adlxGpu.UniqueId() == uniqueId)
                             {
-                                using (IADLXGPUMetricsSupport adlxMetrixSupport = GetSupportedGPUMetrics(adlxGpu))
+                                using (IADLXGPUMetrics adlxGPUMetrics = GetCurrentGPUMetrics(adlxGpu))
                                 {
-                                    using (IADLXGPUMetrics adlxGPUMetrics = GetCurrentGPUMetrics(adlxGpu))
+                                    gpuMetrics.TimeStamp = adlxGPUMetrics.TimeStamp();
+                                    gpuMetrics.Add(Metric.MetricType.GPUUsage, supportedGPUMetrics.IsSupportedGPUUsage, adlxGPUMetrics.GPUUsage(), Metric.DataType.Double, supportedGPUMetrics.GPUUsageRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUClockSpeed, supportedGPUMetrics.IsSupportedGPUClockSpeed, adlxGPUMetrics.GPUClockSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUClockSpeedRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUVRAMClockSpeed, supportedGPUMetrics.IsSupportedGPUVRAMClockSpeed, adlxGPUMetrics.GPUVRAMClockSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUVRAMClockSpeedRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUTemperature, supportedGPUMetrics.IsSupportedGPUTemperature, adlxGPUMetrics.GPUTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUTemperatureRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUHotspotTemperature, supportedGPUMetrics.IsSupportedGPUHotspotTemperature, adlxGPUMetrics.GPUHotspotTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUHotspotTemperatureRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUPower, supportedGPUMetrics.IsSupportedGPUPower, adlxGPUMetrics.GPUPower(), Metric.DataType.Double, supportedGPUMetrics.GPUPowerRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUTotalBoardPower, supportedGPUMetrics.IsSupportedGPUTotalBoardPower, adlxGPUMetrics.GPUTotalBoardPower(), Metric.DataType.Double, supportedGPUMetrics.GPUTotalBoardPowerRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUFanSpeed, supportedGPUMetrics.IsSupportedGPUFanSpeed, adlxGPUMetrics.GPUFanSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUFanSpeedRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUVRAM, supportedGPUMetrics.IsSupportedGPUVRAM, adlxGPUMetrics.GPUVRAM(), Metric.DataType.Integer, supportedGPUMetrics.GPUVRAMRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUVoltage, supportedGPUMetrics.IsSupportedGPUVoltage, adlxGPUMetrics.GPUVoltage(), Metric.DataType.Integer, supportedGPUMetrics.GPUVoltageRange);
+                                    gpuMetrics.Add(Metric.MetricType.GPUIntakeTemperature, supportedGPUMetrics.IsSupportedGPUIntakeTemperature, adlxGPUMetrics.GPUIntakeTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUIntakeTemperatureRange);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return gpuMetrics;
+        }
+
+        public GPUMetrics GetHistoryGPUMetricsForUniqueId(int uniqueId, SupportedGPUMetrics supportedGPUMetrics)
+        {
+            GPUMetrics gpuMetrics = [];
+
+            using (IADLXGPUList adlxGPUList = GetSystemServices().GetGPUs())
+            {
+                for (int i = 0; i < adlxGPUList.Size(); i++)
+                {
+                    IADLXGPU adlxGpu;
+                    if (adlxGPUList.At_GPUList((uint)i, out adlxGpu) == ADLXResult.ADLX_OK)
+                    {
+                        using (adlxGpu)
+                        {
+                            if (adlxGpu.UniqueId() == uniqueId)
+                            {
+                                using (IADLXGPUMetricsList adlxGPUMetricsList = GetGPUMetricsHistory(adlxGpu, 0, 0))
+                                {
+                                    if (adlxGPUMetricsList.Size() > 0)
                                     {
-                                        gpuMetrics.TimeStamp = adlxGPUMetrics.TimeStamp();
-                                        gpuMetrics.Add(Metric.MetricType.GPUUsage, adlxMetrixSupport.IsSupportedGPUUsage(), adlxGPUMetrics.GPUUsage(), Metric.DataType.Double, adlxMetrixSupport.GetGPUUsageRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUClockSpeed, adlxMetrixSupport.IsSupportedGPUClockSpeed(), adlxGPUMetrics.GPUClockSpeed(), Metric.DataType.Integer, adlxMetrixSupport.GetGPUClockSpeedRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUVRAMClockSpeed, adlxMetrixSupport.IsSupportedGPUVRAMClockSpeed(), adlxGPUMetrics.GPUVRAMClockSpeed(), Metric.DataType.Integer, adlxMetrixSupport.GetGPUVRAMClockSpeedRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUTemperature, adlxMetrixSupport.IsSupportedGPUTemperature(), adlxGPUMetrics.GPUTemperature(), Metric.DataType.Double, adlxMetrixSupport.GetGPUTemperatureRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUHotspotTemperature, adlxMetrixSupport.IsSupportedGPUHotspotTemperature(), adlxGPUMetrics.GPUHotspotTemperature(), Metric.DataType.Double, adlxMetrixSupport.GetGPUHotspotTemperatureRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUPower, adlxMetrixSupport.IsSupportedGPUPower(), adlxGPUMetrics.GPUPower(), Metric.DataType.Double, adlxMetrixSupport.GetGPUPowerRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUTotalBoardPower, adlxMetrixSupport.IsSupportedGPUTotalBoardPower(), adlxGPUMetrics.GPUTotalBoardPower(), Metric.DataType.Double, adlxMetrixSupport.GetGPUTotalBoardPowerRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUFanSpeed, adlxMetrixSupport.IsSupportedGPUFanSpeed(), adlxGPUMetrics.GPUFanSpeed(), Metric.DataType.Integer, adlxMetrixSupport.GetGPUFanSpeedRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUVRAM, adlxMetrixSupport.IsSupportedGPUVRAM(), adlxGPUMetrics.GPUVRAM(), Metric.DataType.Integer, adlxMetrixSupport.GetGPUVRAMRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUVoltage, adlxMetrixSupport.IsSupportedGPUVoltage(), adlxGPUMetrics.GPUVoltage(), Metric.DataType.Integer, adlxMetrixSupport.GetGPUVoltageRange());
-                                        gpuMetrics.Add(Metric.MetricType.GPUIntakeTemperature, adlxMetrixSupport.IsSupportedGPUIntakeTemperature(), adlxGPUMetrics.GPUIntakeTemperature(), Metric.DataType.Double, adlxMetrixSupport.GetGPUIntakeTemperatureRange());
+                                        adlxGPUMetricsList.At_GPUMetricsList(0, out IADLXGPUMetrics adlxGPUMetrics);
+                                        using (adlxGPUMetrics)
+                                        {
+                                            gpuMetrics.TimeStamp = adlxGPUMetrics.TimeStamp();
+                                            gpuMetrics.Add(Metric.MetricType.GPUUsage, supportedGPUMetrics.IsSupportedGPUUsage, adlxGPUMetrics.GPUUsage(), Metric.DataType.Double, supportedGPUMetrics.GPUUsageRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUClockSpeed, supportedGPUMetrics.IsSupportedGPUClockSpeed, adlxGPUMetrics.GPUClockSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUClockSpeedRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUVRAMClockSpeed, supportedGPUMetrics.IsSupportedGPUVRAMClockSpeed, adlxGPUMetrics.GPUVRAMClockSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUVRAMClockSpeedRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUTemperature, supportedGPUMetrics.IsSupportedGPUTemperature, adlxGPUMetrics.GPUTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUTemperatureRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUHotspotTemperature, supportedGPUMetrics.IsSupportedGPUHotspotTemperature, adlxGPUMetrics.GPUHotspotTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUHotspotTemperatureRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUPower, supportedGPUMetrics.IsSupportedGPUPower, adlxGPUMetrics.GPUPower(), Metric.DataType.Double, supportedGPUMetrics.GPUPowerRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUTotalBoardPower, supportedGPUMetrics.IsSupportedGPUTotalBoardPower, adlxGPUMetrics.GPUTotalBoardPower(), Metric.DataType.Double, supportedGPUMetrics.GPUTotalBoardPowerRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUFanSpeed, supportedGPUMetrics.IsSupportedGPUFanSpeed, adlxGPUMetrics.GPUFanSpeed(), Metric.DataType.Integer, supportedGPUMetrics.GPUFanSpeedRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUVRAM, supportedGPUMetrics.IsSupportedGPUVRAM, adlxGPUMetrics.GPUVRAM(), Metric.DataType.Integer, supportedGPUMetrics.GPUVRAMRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUVoltage, supportedGPUMetrics.IsSupportedGPUVoltage, adlxGPUMetrics.GPUVoltage(), Metric.DataType.Integer, supportedGPUMetrics.GPUVoltageRange);
+                                            gpuMetrics.Add(Metric.MetricType.GPUIntakeTemperature, supportedGPUMetrics.IsSupportedGPUIntakeTemperature, adlxGPUMetrics.GPUIntakeTemperature(), Metric.DataType.Double, supportedGPUMetrics.GPUIntakeTemperatureRange);
+                                        }
                                     }
                                 }
                             }
@@ -1402,56 +1455,68 @@ public static class AmdAdlx
                                     if (adlxMetrixSupport.IsSupportedGPUUsage())
                                     {
                                         supported.IsSupportedGPUUsage = true;
+                                        supported.GPUUsageRange = adlxMetrixSupport.GetGPUUsageRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUClockSpeed())
                                     {
                                         supported.IsSupportedGPUClockSpeed = true;
+                                        supported.GPUClockSpeedRange = adlxMetrixSupport.GetGPUClockSpeedRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUVRAMClockSpeed())
                                     {
                                         supported.IsSupportedGPUVRAMClockSpeed = true;
+                                        supported.GPUVRAMClockSpeedRange = adlxMetrixSupport.GetGPUVRAMClockSpeedRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUTemperature())
                                     {
                                         supported.IsSupportedGPUTemperature = true;
+                                        supported.GPUTemperatureRange = adlxMetrixSupport.GetGPUTemperatureRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUHotspotTemperature())
                                     {
                                         supported.IsSupportedGPUHotspotTemperature = true;
+                                        supported.GPUHotspotTemperatureRange = adlxMetrixSupport.GetGPUHotspotTemperatureRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUPower())
                                     {
                                         supported.IsSupportedGPUPower = true;
+                                        supported.GPUPowerRange = adlxMetrixSupport.GetGPUPowerRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUTotalBoardPower())
                                     {
                                         supported.IsSupportedGPUTotalBoardPower = true;
+                                        supported.GPUTotalBoardPowerRange = adlxMetrixSupport.GetGPUTotalBoardPowerRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUFanSpeed())
                                     {
                                         supported.IsSupportedGPUFanSpeed = true;
+                                        supported.GPUFanSpeedRange = adlxMetrixSupport.GetGPUFanSpeedRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUVRAM())
                                     {
                                         supported.IsSupportedGPUVRAM = true;
+                                        supported.GPUVRAMRange = adlxMetrixSupport.GetGPUVRAMRange();
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUVoltage())
                                     {
                                         supported.IsSupportedGPUVoltage = true;
+                                        supported.GPUVoltageRange = adlxMetrixSupport.GetGPUVoltageRange();
+
                                     }
 
                                     if (adlxMetrixSupport.IsSupportedGPUIntakeTemperature())
                                     {
                                         supported.IsSupportedGPUIntakeTemperature = true;
+                                        supported.GPUIntakeTemperatureRange = adlxMetrixSupport.GetGPUIntakeTemperatureRange();
                                     }
                                 }
                             }
@@ -1499,6 +1564,32 @@ public static class AmdAdlx
             return GetCurrentGPUMetrics(adlxGpu, out IADLXGPUMetrics gpuMetrics) == ADLXResult.ADLX_OK ? gpuMetrics : null;
         }
 
+        public ADLXResult GetGPUMetricsHistory(IADLXGPU adlxGpu, int startMs, int stopMs, out IADLXGPUMetricsList gpuMetricsList)
+        {
+            ADLXResult status = vtbl.GetGPUMetricsHistory(_ptr, adlxGpu.ToPointer(), startMs, stopMs, out IntPtr ptrGpuMetrics);
+            gpuMetricsList = new ADLXGPUMetricsList(ptrGpuMetrics);
+            return status;
+        }
+
+        public IADLXGPUMetricsList GetGPUMetricsHistory(IADLXGPU adlxGpu, int startMs, int stopMs)
+        {
+            GetGPUMetricsHistory(adlxGpu, startMs, stopMs, out IADLXGPUMetricsList gpuMetricsList);
+            return gpuMetricsList;
+        }
+
+        public ADLXResult GetFPSHistory(int startMs, int stopMs, out IADLXFPSList FPSMetricsList)
+        {
+            ADLXResult status = vtbl.GetFPSHistory(_ptr, startMs, stopMs, out IntPtr ptrFPSMetrics);
+            FPSMetricsList = new ADLXFPSList(ptrFPSMetrics);
+            return status;
+        }
+
+        public IADLXFPSList GetFPSHistory(int startMs, int stopMs)
+        {
+            GetFPSHistory(startMs, stopMs, out IADLXFPSList FPSMetricsList);
+            return FPSMetricsList;
+        }
+
         public ADLXResult GetSamplingIntervalRange(out ADLX_IntRange range)
         {
             return vtbl.GetSamplingIntervalRange(_ptr, out range);
@@ -1508,6 +1599,21 @@ public static class AmdAdlx
         {
             GetSamplingIntervalRange(out ADLX_IntRange range);
             return range;
+        }
+
+        public ADLXResult StartPerformanceMetricsTracking()
+        {
+            return vtbl.StartPerformanceMetricsTracking(_ptr);
+        }
+
+        public ADLXResult StopPerformanceMetricsTracking()
+        {
+            return vtbl.StopPerformanceMetricsTracking(_ptr);
+        }
+
+        public ADLXResult ClearPerformanceMetricsHistory()
+        {
+            return vtbl.ClearPerformanceMetricsHistory(_ptr);
         }
 
         public ADLXResult GetSamplingInterval(out int intervalMs)
@@ -1558,14 +1664,14 @@ public static class AmdAdlx
             public IntPtr GetMaxPerformanceMetricsHistorySizeRange;
             public IntPtr SetMaxPerformanceMetricsHistorySize;
             public IntPtr GetMaxPerformanceMetricsHistorySize;
-            public IntPtr ClearPerformanceMetricsHistory;
+            public ADLXPerformanceMonitoringServicesDelegates.ClearPerformanceMetricsHistory ClearPerformanceMetricsHistory;
             public IntPtr GetCurrentPerformanceMetricsHistorySize;
-            public IntPtr StartPerformanceMetricsTracking;
-            public IntPtr StopPerformanceMetricsTracking;
+            public ADLXPerformanceMonitoringServicesDelegates.StartPerformanceMetricsTracking StartPerformanceMetricsTracking;
+            public ADLXPerformanceMonitoringServicesDelegates.StopPerformanceMetricsTracking StopPerformanceMetricsTracking;
             public IntPtr GetAllMetricsHistory;
-            public IntPtr GetGPUMetricsHistory;
+            public ADLXPerformanceMonitoringServicesDelegates.GetGPUMetricsHistory GetGPUMetricsHistory;
             public IntPtr GetSystemMetricsHistory;
-            public IntPtr GetFPSHistory;
+            public ADLXPerformanceMonitoringServicesDelegates.GetFPSHistory GetFPSHistory;
             public IntPtr GetCurrentAllMetrics;
             public ADLXPerformanceMonitoringServicesDelegates.GetCurrentGPUMetrics GetCurrentGPUMetrics;
             public IntPtr GetCurrentSystemMetrics;
@@ -1596,6 +1702,21 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult SetSamplingInterval(IntPtr adlxPerfMonServ, int intervalMs);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetGPUMetricsHistory(IntPtr iadlxPerformanceMonitoringServices, IntPtr pGPU, int startMs, int stopMs, out IntPtr ppMetricsList);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult StartPerformanceMetricsTracking(IntPtr iadlxPerformanceMonitoringServices);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult StopPerformanceMetricsTracking(IntPtr iadlxPerformanceMonitoringServices);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult ClearPerformanceMetricsHistory(IntPtr iadlxPerformanceMonitoringServices);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult GetFPSHistory(IntPtr iadlxPerformanceMonitoringServices, int startMs, int stopMs, out IntPtr ppMetricsList);
         }
     }
 
@@ -2027,6 +2148,96 @@ public static class AmdAdlx
 
     /*************************************************************************
      ************************************************************************
+        ADLXGPUMetricsList
+     ************************************************************************
+    *************************************************************************/
+    public interface IADLXGPUMetricsList : IADLXList
+    {
+        ADLXResult At_GPUMetricsList(uint location, out IADLXGPUMetrics ppItem);
+        ADLXResult Add_Back_GPUMetricsList(IADLXGPUMetrics ppItem);
+    }
+    private class ADLXGPUMetricsList : ADLXList, IADLXGPUMetricsList
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXGPUMetricsListVtbl vtbl;
+
+        internal ADLXGPUMetricsList(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult At_GPUMetricsList(uint location, out IADLXGPUMetrics ppItem)
+        {
+            ADLXResult status = vtbl.At_GPUMetricsList(_ptr, location, out IntPtr ptr);
+
+            if (status == ADLXResult.ADLX_OK && ptr != IntPtr.Zero)
+            {
+                ppItem = new ADLXGPUMetrics(ptr);
+                return ADLXResult.ADLX_OK;
+            }
+            else
+            {
+                ppItem = null;
+            }
+
+            return status;
+        }
+
+        public ADLXResult Add_Back_GPUMetricsList(IADLXGPUMetrics ppItem)
+        {
+            IntPtr ptrGpuMetrics = ppItem.ToPointer();
+
+            if (ptrGpuMetrics != IntPtr.Zero)
+            {
+                return vtbl.Add_Back_GPUMetricsList(_ptr, ptrGpuMetrics);
+            }
+
+            return ADLXResult.ADLX_INVALID_ARGS;
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXGPUMetricsList release started ptr=(0x{0:X})", _ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxList.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXGPUMetricsList released (count={0})", release);
+
+            return release;
+        }
+
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXGPUMetricsListVtbl
+        {
+            public ADLXListVtbl adlxList;
+
+            public ADLXGPUMetricsListDelegates.At_GPUMetricsList At_GPUMetricsList;
+            public ADLXGPUMetricsListDelegates.Add_Back_GPUMetricsList Add_Back_GPUMetricsList;
+        }
+
+        protected static class ADLXGPUMetricsListDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult At_GPUMetricsList(IntPtr adlxGpuMetricsList, uint location, out IntPtr ppItem);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult Add_Back_GPUMetricsList(IntPtr adlxGpuMetricsList, IntPtr pItem);
+        }
+    }
+
+    /*************************************************************************
+     ************************************************************************
         ADLXGPUMetrics
      ************************************************************************
     *************************************************************************/
@@ -2366,6 +2577,97 @@ public static class AmdAdlx
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate ADLXResult FPS(IntPtr adlxFps, out int data);
+        }
+    }
+
+    /*************************************************************************
+     ************************************************************************
+        ADLXFPSList
+     ************************************************************************
+    *************************************************************************/
+    public interface IADLXFPSList : IADLXList
+    {
+        ADLXResult At_FPSList(uint location, out IADLXFPS ppItem);
+        ADLXResult Add_Back_FPSList(IADLXFPS ppItem);
+    }
+
+    private class ADLXFPSList : ADLXList, IADLXFPSList
+    {
+        private readonly IntPtr _ptr;
+        private readonly ADLXFPSListVtbl vtbl;
+
+        internal ADLXFPSList(IntPtr ptr) : base(ptr)
+        {
+            _ptr = ptr;
+            GetVtblPointer(ptr, out vtbl);
+        }
+
+        public ADLXResult At_FPSList(uint location, out IADLXFPS ppItem)
+        {
+            ADLXResult status = vtbl.At_FPSList(_ptr, location, out IntPtr ptr);
+
+            if (status == ADLXResult.ADLX_OK && ptr != IntPtr.Zero)
+            {
+                ppItem = new ADLXFPS(ptr);
+                return ADLXResult.ADLX_OK;
+            }
+            else
+            {
+                ppItem = null;
+            }
+
+            return status;
+        }
+
+        public ADLXResult Add_Back_FPSList(IADLXFPS ppItem)
+        {
+            IntPtr ptrGpu = ppItem.ToPointer();
+
+            if (ptrGpu != IntPtr.Zero)
+            {
+                return vtbl.Add_Back_FPSList(_ptr, ptrGpu);
+            }
+
+            return ADLXResult.ADLX_INVALID_ARGS;
+        }
+
+        public new IntPtr ToPointer()
+        {
+            return _ptr;
+        }
+
+        public override long Release()
+        {
+            LogDebug("+ADLXFPSList release started ptr=(0x{0:X})", _ptr);
+            long release = 0;
+            if (_ptr != IntPtr.Zero)
+            {
+                release = vtbl.adlxList.adlxInterface.Release(_ptr);
+            }
+            LogDebug("+ADLXFPSList released (count={0})", release);
+
+            return release;
+        }
+
+        /// <summary>
+        /// See <see cref="https://github.com/GPUOpen-LibrariesAndSDKs/ADLX/blob/main/SDK/Include/IPerformanceMonitoring.h"/>
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        protected struct ADLXFPSListVtbl
+        {
+            public ADLXListVtbl adlxList;
+
+            public ADLXFPSListDelegates.At_FPSList At_FPSList;
+            public ADLXFPSListDelegates.Add_Back_FPSList Add_Back_FPSList;
+        }
+
+        protected static class ADLXFPSListDelegates
+        {
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult At_FPSList(IntPtr ADLXFPSList, uint location, out IntPtr ppItem);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate ADLXResult Add_Back_FPSList(IntPtr ADLXFPSList, IntPtr pItem);
         }
     }
 
@@ -3455,6 +3757,17 @@ public static class AmdAdlx
         public bool IsSupportedGPUVRAM { get; set; }
         public bool IsSupportedGPUVoltage { get; set; }
         public bool IsSupportedGPUIntakeTemperature { get; set; }
+        public ADLX_IntRange GPUUsageRange { get; set; }
+        public ADLX_IntRange GPUClockSpeedRange { get; set; }
+        public ADLX_IntRange GPUVRAMClockSpeedRange { get; set; }
+        public ADLX_IntRange GPUTemperatureRange { get; set; }
+        public ADLX_IntRange GPUHotspotTemperatureRange { get; set; }
+        public ADLX_IntRange GPUPowerRange { get; set; }
+        public ADLX_IntRange GPUFanSpeedRange { get; set; }
+        public ADLX_IntRange GPUVRAMRange { get; set; }
+        public ADLX_IntRange GPUVoltageRange { get; set; }
+        public ADLX_IntRange GPUTotalBoardPowerRange { get; set; }
+        public ADLX_IntRange GPUIntakeTemperatureRange { get; set; }
     }
 
     public class Metric

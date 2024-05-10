@@ -19,6 +19,7 @@ public class Program
         bool debug = args.Contains("debug"); // debug messages
         bool noAdl = args.Contains("noadl"); // don't initialize adl
         bool noFps = args.Contains("nofps"); // skip fps counter
+        bool noMetrics = args.Contains("nometrics"); // skip fps counter
         bool setrpm = args.Contains("setrpm"); // set fan rpm
 
         _logger = CreateLogger(debug && !loop);
@@ -60,12 +61,19 @@ public class Program
                 int i = 0;
                 DateTime last = DateTime.Now;
                 TimeSpan accFpsTime = TimeSpan.Zero;
+                TimeSpan accHistFpsTime = TimeSpan.Zero;
+
+                // 'using' is important to release the adlx interfaces
+                using AmdAdlx.IADLXPerformanceMonitoringServices perf = system.GetPerformanceMonitoringServices();
+                perf.StartPerformanceMetricsTracking();
+
                 while (true)
                 {
                     i++;
                     if (i % 10000 == 0)
                     {
-                        Console.WriteLine("i = {0}, TimeSpan = {1:s\\.fffffff}s; GetCurrentFPS-Duration = {2:s\\.fffffff}s;", i, DateTime.Now - last, accFpsTime);
+                        Console.WriteLine("i = {0}, TimeSpan = {1:s\\.fffffff}s; GetCurrentFPS-Duration = {2:s\\.fffffff}s; GetFPSHistory-Duration = {3:s\\.fffffff}s;",
+                                            i, DateTime.Now - last, accFpsTime, accHistFpsTime);
                         last = DateTime.Now;
                         accFpsTime = TimeSpan.Zero;
                     }
@@ -80,57 +88,59 @@ public class Program
                     uint r = system.GetTotalSystemRAM();
                     List<AmdAdlx.GPU> gpuList2 = system.GetGPUList();
 
-                    // 'using' is important to release the adlx interfaces
-                    using (AmdAdlx.IADLXPerformanceMonitoringServices perf = system.GetPerformanceMonitoringServices())
+                    foreach (AmdAdlx.GPU gpu in gpuList2)
                     {
-                        foreach (AmdAdlx.GPU gpu in gpuList2)
+                        //get supported gpu metrics
+                        AmdAdlx.SupportedGPUMetrics supportedGPUMetrics = perf.GetSupportedGPUMetricsForUniqueId(gpu.UniqueId);
+                        //get all metrics
+                        AmdAdlx.GPUMetrics gpuMetrics = perf.GetCurrentGPUMetricsForUniqueId(gpu.UniqueId, supportedGPUMetrics);
+                        perf.GetHistoryGPUMetricsForUniqueId(gpu.UniqueId, supportedGPUMetrics);
+
+                        AmdAdlx.ADLX_IntRange range = perf.GetSamplingIntervalRange();
+
+                        using (AmdAdlx.IADLXGPUTuningServices gpuTuningServices = system.GetGPUTuningServices() ?? throw new Exception("GetGPUTuningServices failed"))
                         {
-                            //get supported gpu metrics
-                            AmdAdlx.SupportedGPUMetrics supportedGPUMetrics = perf.GetSupportedGPUMetricsForUniqueId(gpu.UniqueId);
-                            //get all metrics
-                            AmdAdlx.GPUMetrics gpuMetrics = perf.GetCurrentGPUMetricsForUniqueId(gpu.UniqueId);
-
-                            AmdAdlx.ADLX_IntRange range = perf.GetSamplingIntervalRange();
-
-                            using (AmdAdlx.IADLXGPUTuningServices gpuTuningServices = system.GetGPUTuningServices() ?? throw new Exception("GetGPUTuningServices failed"))
+                            using (AmdAdlx.IADLXGPU adlxGpu = system.GetADLXGPUByUniqueId(gpu.UniqueId))
                             {
-                                using (AmdAdlx.IADLXGPU adlxGpu = system.GetADLXGPUByUniqueId(gpu.UniqueId))
-                                {
-                                    adlxGpu.QueryInterface(out AmdAdlx.IADLXGPU1 adlxGpu1);
-                                    adlxGpu1.Dispose();
+                                adlxGpu.QueryInterface(out AmdAdlx.IADLXGPU1 adlxGpu1);
+                                adlxGpu1.Dispose();
 
-                                    gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool support);
-                                    AmdAdlx.ADLXResult status = gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool supportedManualFanTuning);
+                                gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool support);
+                                AmdAdlx.ADLXResult status = gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool supportedManualFanTuning);
 
-                                    using AmdAdlx.IADLXManualFanTuning manual = gpuTuningServices.GetManualFanTuning(adlxGpu);
-                                    manual.GetFanTuningRanges(out AmdAdlx.ADLX_IntRange speedRange, out AmdAdlx.ADLX_IntRange temperatureRange);
-                                    manual.IsSupportedMinAcousticLimit();
-                                    manual.IsSupportedMinFanSpeed();
-                                    manual.IsSupportedTargetFanSpeed();
-                                    manual.IsSupportedZeroRPM();
-                                    manual.GetMinAcousticLimit();
-                                    manual.GetMinFanSpeed();
-                                    manual.GetTargetFanSpeed();
-                                    manual.GetZeroRPMState();
-                                    manual.GetMinAcousticLimitRange();
-                                    manual.GetMinFanSpeedRange();
-                                    manual.GetTargetFanSpeedRange();
-                                    gpuTuningServices.IsSupportedAutoTuning(gpu.UniqueId);
-                                    gpuTuningServices.IsSupportedPresetTuning(gpu.UniqueId);
-                                    gpuTuningServices.IsSupportedManualGFXTuning(gpu.UniqueId);
-                                    gpuTuningServices.IsSupportedManualVRAMTuning(gpu.UniqueId);
-                                    gpuTuningServices.IsSupportedManualPowerTuning(gpu.UniqueId);
-                                }
+                                using AmdAdlx.IADLXManualFanTuning manual = gpuTuningServices.GetManualFanTuning(adlxGpu);
+                                manual.GetFanTuningRanges(out AmdAdlx.ADLX_IntRange speedRange, out AmdAdlx.ADLX_IntRange temperatureRange);
+                                manual.IsSupportedMinAcousticLimit();
+                                manual.IsSupportedMinFanSpeed();
+                                manual.IsSupportedTargetFanSpeed();
+                                manual.IsSupportedZeroRPM();
+                                manual.GetMinAcousticLimit();
+                                manual.GetMinFanSpeed();
+                                manual.GetTargetFanSpeed();
+                                manual.GetZeroRPMState();
+                                manual.GetMinAcousticLimitRange();
+                                manual.GetMinFanSpeedRange();
+                                manual.GetTargetFanSpeedRange();
+                                gpuTuningServices.IsSupportedAutoTuning(gpu.UniqueId);
+                                gpuTuningServices.IsSupportedPresetTuning(gpu.UniqueId);
+                                gpuTuningServices.IsSupportedManualGFXTuning(gpu.UniqueId);
+                                gpuTuningServices.IsSupportedManualVRAMTuning(gpu.UniqueId);
+                                gpuTuningServices.IsSupportedManualPowerTuning(gpu.UniqueId);
                             }
                         }
-                        if (!noFps)
-                        {
-                            DateTime beforeFps = DateTime.Now;
-                            perf.CurrentFPS();
-                            accFpsTime += DateTime.Now - beforeFps;
-                        }
                     }
+                    if (!noFps)
+                    {
+                        DateTime beforeFps = DateTime.Now;
+                        perf.CurrentFPS();
+                        accFpsTime += DateTime.Now - beforeFps;
+                    }
+
+                    DateTime beforeHistFps = DateTime.Now;
+                    perf.GetFPSHistory(0, 0);
+                    accHistFpsTime += DateTime.Now - beforeHistFps;
                 }
+                perf.StopPerformanceMetricsTracking();
                 return;
             }
 
@@ -171,10 +181,15 @@ public class Program
             // 'using' is important to release the adlx interfaces
             using (AmdAdlx.IADLXPerformanceMonitoringServices perf = system.GetPerformanceMonitoringServices())
             {
+                perf.StartPerformanceMetricsTracking();
+                perf.SetSamplingInterval(700);
                 foreach (AmdAdlx.GPU gpu in gpuList)
                 {
                     //get supported gpu metrics
+                    DateTime beforeSupMetrics = DateTime.Now;
                     AmdAdlx.SupportedGPUMetrics supportedGPUMetrics = perf.GetSupportedGPUMetricsForUniqueId(gpu.UniqueId);
+                    Console.WriteLine("GetSupportedGPUMetrics took {0}ms", (DateTime.Now - beforeSupMetrics).TotalMilliseconds);
+
                     Console.WriteLine("GPU='{0}'", gpu.Name);
                     Console.WriteLine("IsSupportedGPUUsage = {0}", supportedGPUMetrics.IsSupportedGPUUsage);
                     Console.WriteLine("IsSupportedGPUClockSpeed = {0}", supportedGPUMetrics.IsSupportedGPUClockSpeed);
@@ -188,8 +203,57 @@ public class Program
                     Console.WriteLine("IsSupportedGPUVoltage = {0}", supportedGPUMetrics.IsSupportedGPUVoltage);
                     Console.WriteLine("IsSupportedGPUIntakeTemperature = {0}", supportedGPUMetrics.IsSupportedGPUIntakeTemperature);
 
-                    //get all metrics
-                    AmdAdlx.GPUMetrics gpuMetrics = perf.GetCurrentGPUMetricsForUniqueId(gpu.UniqueId);
+                    using AmdAdlx.IADLXGPU adlxGpu = system.GetADLXGPUByUniqueId(gpu.UniqueId);
+                    if (!noMetrics)
+                    {
+                        for (int i = 0; i < 10; i++)
+                        {
+                            //get all metrics
+                            DateTime beforeCurrentMetrics = DateTime.Now;
+                            using (AmdAdlx.IADLXGPUMetrics adlxGpuCurMetrics = perf.GetCurrentGPUMetrics(adlxGpu))
+                            {
+                                Console.WriteLine("GetCurrentGPUMetrics took {0}ms", (DateTime.Now - beforeCurrentMetrics).TotalMilliseconds);
+                            }
+
+                            //get all metrics
+                            DateTime beforeHistoryMetrics = DateTime.Now;
+                            using (AmdAdlx.IADLXGPUMetricsList adlxGpuHistMetricsList = perf.GetGPUMetricsHistory(adlxGpu, 0, 0))
+                            {
+                                if (adlxGpuHistMetricsList.Size() > 0)
+                                {
+                                    adlxGpuHistMetricsList.At_GPUMetricsList(0, out AmdAdlx.IADLXGPUMetrics adlxGPUMetrics);
+                                    Console.WriteLine("GetHistoryGPUMetrics took {0}ms", (DateTime.Now - beforeHistoryMetrics).TotalMilliseconds);
+                                    adlxGPUMetrics.Dispose();
+                                }
+                            }
+                            Console.WriteLine();
+
+                            DateTime beforeCurFps = DateTime.Now;
+                            Console.WriteLine("GetCurrentFPS={0}; Time={1}; took {2}ms", perf.CurrentFPS(), DateTime.Now.TimeOfDay, (DateTime.Now - beforeCurFps).TotalMilliseconds);
+                            DateTime beforeHistFps = DateTime.Now;
+                            using (AmdAdlx.IADLXFPSList adlxFpsList = perf.GetFPSHistory(0, 0))
+                            {
+                                if (adlxFpsList.Size() > 0)
+                                {
+                                    adlxFpsList.At_FPSList(0, out AmdAdlx.IADLXFPS adlxFps);
+                                    Console.WriteLine("GetFPSHistory took {0}ms", (DateTime.Now - beforeHistFps).TotalMilliseconds);
+                                    adlxFps.Dispose();
+                                }
+                            }
+                            Thread.Sleep(1000);
+                        }
+                    }
+
+                    DateTime beforeCurUniqMetrics = DateTime.Now;
+                    perf.GetCurrentGPUMetricsForUniqueId(gpu.UniqueId, supportedGPUMetrics);
+                    Console.WriteLine("GetCurrentGPUMetricsForUniqueId took {0}ms", (DateTime.Now - beforeCurUniqMetrics).TotalMilliseconds);
+
+                    DateTime beforeHistUniqMetrics = DateTime.Now;
+                    AmdAdlx.GPUMetrics gpuMetrics = perf.GetHistoryGPUMetricsForUniqueId(gpu.UniqueId, supportedGPUMetrics);
+                    Console.WriteLine("GetHistoryGPUMetricsForUniqueId took {0}ms", (DateTime.Now - beforeHistUniqMetrics).TotalMilliseconds);
+
+                    Console.WriteLine();
+
                     Console.WriteLine("GPU='{0}'; TimeStamp='{1}';", gpu.Name, gpuMetrics.TimeStamp);
                     foreach (AmdAdlx.Metric m in gpuMetrics)
                     {
@@ -201,23 +265,11 @@ public class Program
 
                     Console.WriteLine("SamplingInterval: {0}", perf.GetSamplingInterval());
 
-                    if (!noFps)
-                    {
-                        int j = 5;
-                        while (j > 0)
-                        {
-                            j--;
-                            Thread.Sleep(500);
-                            Console.WriteLine("FPS={0}; Time={1};", perf.CurrentFPS(), DateTime.Now.TimeOfDay); //only detects fullscreen applications
-                        }
-                    }
-
                     //// FAN TUNING
                     using (AmdAdlx.IADLXGPUTuningServices gpuTuningServices = system.GetGPUTuningServices() ?? throw new Exception("GetGPUTuningServices failed"))
                     {
                         Console.WriteLine("Manual Fan Tuning support = {0}; GPUName = '{1}';", gpuTuningServices.IsSupportedManualFanTuning(gpu.UniqueId), gpu.Name);
 
-                        using AmdAdlx.IADLXGPU adlxGpu = system.GetADLXGPUByUniqueId(gpu.UniqueId);
                         AmdAdlx.ADLXResult status = gpuTuningServices.IsSupportedManualFanTuning(adlxGpu, out bool supportedManualFanTuning);
                         Console.WriteLine("Manual Fan Tuning support = {0}; GPUName = '{1}'; ADLXResult = {2}", supportedManualFanTuning, adlxGpu.Name(), status);
 
@@ -309,6 +361,7 @@ public class Program
                         }
                     }
                 }
+                perf.StopPerformanceMetricsTracking();
             }
         }
         catch (DllNotFoundException e)

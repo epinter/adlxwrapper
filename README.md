@@ -8,17 +8,17 @@ This is a POC of a wrapper for 'AMD Device Library eXtra', without the need of C
 adlxwrapper-console.exe loop nofps noadl
 ```
 
-- Normal execution with debug messages (mostly pointer release messages), shows metrics, gpu info, features support, etc. Without fps counter or adl mapping.
+- Normal execution with debug messages, shows metrics, gpu info, features support, etc. Without adl mapping.
 ```
-adlxwrapper-console.exe debug nofps noadl
+adlxwrapper-console.exe debug noadl
 ```
 
-- Normal execution with debug messages (mostly pointer release messages), shows metrics, gpu info, features support, etc.
+- Normal execution with debug messages, shows metrics, gpu info, features support, etc.
 ```
 adlxwrapper-console.exe debug
 ```
 
-- Normal execution with debug messages (mostly pointer release messages), set fans rpm.
+- Normal execution with debug messages, set fans rpm.
 ```
 adlxwrapper-console.exe debug setrpm
 ```
